@@ -41,7 +41,7 @@ public class HashsumFileVisitor extends SimpleFileVisitor<Path> {
     public FileVisitResult visitFileFailed(Path path, IOException e) throws IOException {
         out.write("00000000 " + path.toString() + "\n");
         if (Files.notExists(path)) {
-            System.err.println("File does not exist: " + path + " :" + e.getMessage());
+            System.err.println("File does not exist: " + path);
         } else if (Files.isReadable(path)) {
             System.err.println("Can't read file: " + path + " :" + e.getMessage());
         } else {

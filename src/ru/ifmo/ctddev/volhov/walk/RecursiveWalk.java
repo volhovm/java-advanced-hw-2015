@@ -18,50 +18,27 @@ public class RecursiveWalk {
             return;
         }
 
-        BufferedReader br;
-        OutputStreamWriter out;
-        try {
-            br = new BufferedReader(new FileReader(args[0]));
+        try (BufferedReader br = new BufferedReader(new FileReader(args[0]))) {
+            try (OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(args[1]))) {
+                while (true) {
+                    String curr = null;
+                    try {
+                        curr = br.readLine();
+                    } catch (IOException e) {
+                        System.out.println("Error while reading input file: " + e.getMessage());
+                    }
+                    if (curr == null) break;
+                    Files.walkFileTree(Paths.get(curr), new HashsumFileVisitor(out));
+                }
+            } catch (FileNotFoundException e) {
+                System.out.println("Can't open output file " + args[1] + ": " + e.getMessage());
+            } catch (IOException e) {
+                System.out.println("Couldn't close output file: " + e.getMessage());
+            }
         } catch (FileNotFoundException e) {
             System.out.println("Can't open input file " + args[0] + ": " + e.getMessage());
-            return;
-        }
-        try {
-            out = new OutputStreamWriter(new FileOutputStream(args[1]));
-        } catch (FileNotFoundException e) {
-            System.out.println("Can't open output file " + args[1] + ": " + e.getMessage());
-            try {
-                br.close();
-            } catch (IOException e1) {
-                System.out.println("Couldn't close input file: " + e.getMessage());
-            }
-            return;
-        }
-
-        while (true) {
-            String curr = null;
-            try {
-                curr = br.readLine();
-            } catch (IOException e) {
-                System.out.println("Error while reading input file: " + e.getMessage());
-            }
-            if (curr == null) break;
-            try {
-                Files.walkFileTree(Paths.get(curr), new HashsumFileVisitor(out));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        try {
-            br.close();
         } catch (IOException e) {
             System.out.println("Couldn't close input file: " + e.getMessage());
-        }
-        try {
-            out.close();
-        } catch (IOException e) {
-            System.out.println("Couldn't close output file: " + e.getMessage());
         }
     }
 }
