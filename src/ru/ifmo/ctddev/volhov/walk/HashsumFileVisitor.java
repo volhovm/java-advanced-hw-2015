@@ -1,9 +1,6 @@
 package ru.ifmo.ctddev.volhov.walk;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -21,27 +18,35 @@ public class HashsumFileVisitor extends SimpleFileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFile(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
-        System.out.println("Visiting file: " + path.toString());
+//        System.out.println("Visiting file: " + path.toString());
         try {
-            BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8);
-            int seed = 0x811c9dc5;
+            FileInputStream inputStream = new FileInputStream(path.toAbsolutePath().toString());
+            int hash = 0x811c9dc5;
             while (true) {
-                int b = reader.read();
+                int b = inputStream.read();
                 if (b == -1) break;
-                seed = (seed * 0x01000193) ^ (b & 0xff);
+                hash *= 0x01000193;
+                hash ^= b & 0xff;
             }
-            out.write(Integer.toHexString(seed) + " " + path.toString());
+            out.write(String.format("%8s", Integer.toHexString(hash)).replace(' ', '0') + " " + path.toString() + "\n");
+            inputStream.close();
         } catch (IOException e) {
-            out.write("00000000 " + path.toString());
+            System.err.println("Error while calculating hashsum: " + e.getMessage());
+            out.write("00000000 " + path.toString() + "\n");
         }
         return FileVisitResult.CONTINUE;
     }
 
     @Override
     public FileVisitResult visitFileFailed(Path path, IOException e) throws IOException {
-        out.write("22814880 " + path.toString());
-        System.out.println(e.toString());
-        System.out.println(path.toAbsolutePath());
+        out.write("00000000 " + path.toString() + "\n");
+        if (Files.notExists(path)) {
+            System.err.println("File does not exist: " + path + " :" + e.getMessage());
+        } else if (Files.isReadable(path)) {
+            System.err.println("Can't read file: " + path + " :" + e.getMessage());
+        } else {
+            System.err.println("File visit error: " + e.getMessage());
+        }
         return FileVisitResult.CONTINUE;
     }
 }

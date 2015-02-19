@@ -30,27 +30,22 @@ public class RecursiveWalk {
             return;
         }
         System.out.println("Starting with home dir: " + System.getProperty("user.dir"));
-        StringBuilder stringBuilder = new StringBuilder();
-        int current = 0;
-        while (current != -1) {
+        while (true) {
+            String curr = null;
             try {
-                current = br.read();
+                curr = br.readLine();
             } catch (IOException e) {
                 System.out.println("Error while reading input file: " + e.getMessage());
             }
-            if (current != -1) {
-                stringBuilder.append((char) current);
-            }
-            if ((char) current == '\n' || (current == -1 && stringBuilder.length() != 0)) {
-                try {
-                    System.out.println("Starting from path: " + Paths.get(stringBuilder.toString())
-                            + " that is " + Paths.get(stringBuilder.toString()).toAbsolutePath());
-                    Files.walkFileTree(Paths.get(stringBuilder.toString()), new HashsumFileVisitor(out));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    stringBuilder = new StringBuilder();
-                }
+            if (curr == null) break;
+            try {
+//                    System.out.println("Starting from path: `" + Paths.get(stringBuilder.toString())
+//                            + "` that is " + Paths.get(stringBuilder.toString()).toAbsolutePath());
+                Files.walkFileTree(
+                        Paths.get(curr),
+                        new HashsumFileVisitor(out));
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
         try {
@@ -59,9 +54,5 @@ public class RecursiveWalk {
         } catch (IOException e) {
             System.out.println("Couldn't close input/output file: " + e.getMessage());
         }
-    }
-
-    private static void commit(Path path) {
-
     }
 }
