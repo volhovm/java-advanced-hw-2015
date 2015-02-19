@@ -12,6 +12,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 
 public class HashsumFileVisitor extends SimpleFileVisitor<Path> {
     private OutputStreamWriter out;
+
     public HashsumFileVisitor(OutputStreamWriter out) {
         this.out = out;
     }
@@ -19,8 +20,8 @@ public class HashsumFileVisitor extends SimpleFileVisitor<Path> {
     @Override
     public FileVisitResult visitFile(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
 //        System.out.println("Visiting file: " + path.toString());
-        try {
-            FileInputStream inputStream = new FileInputStream(path.toAbsolutePath().toString());
+        try (FileInputStream inputStream
+                     = new FileInputStream(path.toAbsolutePath().toString())) {
             int hash = 0x811c9dc5;
             while (true) {
                 int b = inputStream.read();
@@ -29,7 +30,6 @@ public class HashsumFileVisitor extends SimpleFileVisitor<Path> {
                 hash ^= b & 0xff;
             }
             out.write(String.format("%8s", Integer.toHexString(hash)).replace(' ', '0') + " " + path.toString() + "\n");
-            inputStream.close();
         } catch (IOException e) {
             System.err.println("Error while calculating hashsum: " + e.getMessage());
             out.write("00000000 " + path.toString() + "\n");
