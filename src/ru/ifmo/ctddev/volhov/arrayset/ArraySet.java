@@ -9,12 +9,14 @@ import java.util.function.Function;
  *         Created on 2/24/15
  */
 
+@SuppressWarnings({"unchecked", "NullableProblems"})
 public class ArraySet<T> implements NavigableSet<T> {
     final private Comparator<T> comparator;
     private boolean comparatorNative;
     final private int leftBound, rightBound; // [..)
     final private T[] array;
 
+    // if value is found, @return is index of it, otherwise the place to insert is given
     private int binSearch(T t, int l, int r) {
         if (t == null) throw new NullPointerException();
         if (l + 1 == r) return
@@ -27,32 +29,20 @@ public class ArraySet<T> implements NavigableSet<T> {
         else return binSearch(t, median, r);
     }
 
-    // if value is found, @return is index of it, otherwise the place to insert is given
     private int search(T t, Function<Integer, Boolean> predicate) {
-//        int index = Arrays.binarySearch(array, t, comparator);
-        try {
-            int index = binSearch(t, leftBound, rightBound);
-            if (predicate.apply(-1)) {
-                int i = predicate.apply(0) ? index : index - 1;
-                if (i >= rightBound) i = rightBound - 1;
-                for (; i >= 0; i--) {
-                    if (predicate.apply(comparator.compare(array[i], t))) return i;
-                }
-                return -1;
-            } else if (predicate.apply(1)) {
-                int i = predicate.apply(0) ? index : index + 1;
-                for (; i < array.length; i++) {
-                    if (predicate.apply(comparator.compare(array[i], t))) return i;
-                }
-                return rightBound;
-            } else return index;
-        } catch (Exception e) {
-            System.out.println("Exception in search");
-            System.out.println("Binsearch: " + binSearch(t, leftBound, rightBound) + " " +
-            leftBound + " " + rightBound + " " + t);
-            System.out.println(dumpS());
-            throw e;
-        }
+        int i = binSearch(t, leftBound, rightBound);
+        if (predicate.apply(-1)) {
+            if (i >= rightBound) i = rightBound - 1;
+            for (; i >= 0; i--) {
+                if (predicate.apply(comparator.compare(array[i], t))) return i;
+            }
+            return -1;
+        } else if (predicate.apply(1)) {
+            for (; i < array.length; i++) {
+                if (predicate.apply(comparator.compare(array[i], t))) return i;
+            }
+            return rightBound;
+        } else return i;
     }
 
     private int search(T t) {
@@ -62,7 +52,7 @@ public class ArraySet<T> implements NavigableSet<T> {
     public ArraySet() {
         this((T[]) new Object[0], new Comparator<T>() {
             @Override
-            public int compare(T t, T t1) {
+            public int compare(T t1, T t2) {
                 return 0;
             }
         }, 0, 0, false);
@@ -70,10 +60,10 @@ public class ArraySet<T> implements NavigableSet<T> {
 
     public ArraySet(Collection<T> collection, Comparator<T> comparator) {
         this.comparator = comparator;
-        TreeSet treeset = new TreeSet<T>(comparator);
-        treeset.addAll(collection);
-        T[] tempArray = (T[]) new Object[treeset.size()];
-        treeset.toArray(tempArray);
+        TreeSet<T> treeSet = new TreeSet<T>(comparator);
+        treeSet.addAll(collection);
+        T[] tempArray = (T[]) new Object[treeSet.size()];
+        treeSet.toArray(tempArray);
         this.array = tempArray;
         Arrays.sort(this.array, comparator);
         leftBound = 0;
@@ -98,19 +88,16 @@ public class ArraySet<T> implements NavigableSet<T> {
 
     private ArraySet(T[] array, Comparator<T> comparator, int leftBound, int rightBound, boolean isCompNative) {
         this.array = array;
-        Arrays.sort(this.array, comparator);
-        if (leftBound > rightBound)
-            throw new IllegalArgumentException("Can't construct set with leftBound > rightBound: " +
-                    leftBound + " " + rightBound);
+//        Arrays.sort(this.array, comparator);
+//        if (leftBound > rightBound)
+//            throw new IllegalArgumentException("Can't construct set with leftBound > rightBound: " +
+//                    leftBound + " " + rightBound);
         this.leftBound = leftBound;
-        this.rightBound = rightBound;
+        this.rightBound = leftBound >= rightBound ? leftBound : rightBound;
         this.comparator = comparator;
         this.comparatorNative = isCompNative;
     }
 
-    //    public <Z extends Comparable<T>> ArraySet(Z[] array) {
-//        this((T[]) array, array.)
-//    }
     private T getOrNull(int index) {
         if (inBounds(index)) return array[index];
         else return null;
@@ -161,8 +148,7 @@ public class ArraySet<T> implements NavigableSet<T> {
         if (o == null) throw new NullPointerException();
         T item = (T) o; //ClassCastException
         int index = search(item, i -> i == 0);
-        if (inBounds(index) && comparator.compare(array[index], item) == 0) return true;
-        else return false;
+        return inBounds(index) && comparator.compare(array[index], item) == 0;
     }
 
     private boolean inBounds(int index) {
@@ -277,13 +263,19 @@ public class ArraySet<T> implements NavigableSet<T> {
         int from = search(t, i -> b ? (i >= 0) : (i > 0));
         int to = search(e1, i -> b1 ? (i <= 0) : (i < 0));
 //        if (!contains(e1)) to--;
-        return new ArraySet<T>(array, comparator, from, to + 1, comparatorNative);
+        try {
+            return new ArraySet<T>(array, comparator, from, to + 1, comparatorNative);
+        } catch (Exception e) {
+            System.out.println("Exception in subset: " + t + " " + e1 + " " + b + " " + b1);
+            System.out.println(dumpS());
+            throw e;
+        }
     }
 
     @Override
     public NavigableSet<T> headSet(T t, boolean b) {
         int to = search(t, i -> b ? (i <= 0) : (i < 0));
-        return subSet(leftBound, b ? to : to + 1);
+        return subSet(leftBound, to + 1);
     }
 
     @Override
@@ -305,30 +297,12 @@ public class ArraySet<T> implements NavigableSet<T> {
 
     @Override
     public SortedSet<T> headSet(T t) {
-        // TODO Get rid of try/catch
-        try {
-            return headSet(t, false);
-        } catch (Exception n) {
-            System.out.println(t);
-            System.out.println(dumpS());
-            System.out.println("Exception: " + n.getMessage());
-            n.addSuppressed(new Exception(dumpS()));
-            throw n;
-        }
+        return headSet(t, false);
     }
 
     @Override
     public SortedSet<T> tailSet(T t) {
-        try {
-            return tailSet(t, true);
-        } catch (Exception n) {
-            System.out.println(t);
-            System.out.println(dumpS());
-            System.out.println("Exception: " + n.getMessage());
-            n.printStackTrace(System.out);
-            n.addSuppressed(new Exception(dumpS()));
-            throw n;
-        }
+        return tailSet(t, true);
     }
 
     @Override

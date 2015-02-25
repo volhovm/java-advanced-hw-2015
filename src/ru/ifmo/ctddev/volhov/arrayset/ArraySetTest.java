@@ -10,18 +10,18 @@ import java.util.*;
 public class ArraySetTest {
     public static void main(String[] args) throws InterruptedException {
         List<Integer> list = new ArrayList<Integer>();
-        int[] arr = new int[]{1339027300, -2043416384, 1666651140, 1148808362};
+        int[] arr = new int[]{-1318201610, -1051344301, 1466991001, 1712546160, 343034501, -1954638715, -323163407, 893047611};
         for(int i = 0; i < arr.length; i++) list.add(arr[i]);
-        ArraySet<Integer> set = new ArraySet<>(list, new Comparator<Integer>() {
-            @Override
-            public int compare(Integer i1, Integer i2) {
-                final int c = Integer.compare(i1 % 2, i2 % 2);
-                return c != 0 ? c : Integer.compare(i1, i2);
-            }
-        });
-//        ArraySet<Integer> set = new ArraySet<>(list);
-        SortedSet<Integer> subSet = set.subSet(-1986980903, 2109933207);
-        for(Integer i : subSet) {
+//        ArraySet<Integer> set = new ArraySet<>(list, new Comparator<Integer>() {
+//            @Override
+//            public int compare(Integer i1, Integer i2) {
+//                final int c = Integer.compare(i1 % 2, i2 % 2);
+//                return c != 0 ? c : Integer.compare(i1, i2);
+//            }
+//        });
+        ArraySet<Integer> set = new ArraySet<>(list);
+        SortedSet<Integer> headSet = set.headSet(-1318201610, true);
+        for(Integer i : headSet) {
             System.out.println(i);
         }
 //        Integer[] arr = new Integer[list.size()];
