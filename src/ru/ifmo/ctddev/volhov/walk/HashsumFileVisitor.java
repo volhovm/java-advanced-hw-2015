@@ -1,7 +1,6 @@
 package ru.ifmo.ctddev.volhov.walk;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 
@@ -11,7 +10,7 @@ import java.nio.file.attribute.BasicFileAttributes;
  */
 
 public class HashsumFileVisitor extends SimpleFileVisitor<Path> {
-    private OutputStreamWriter out;
+    final private OutputStreamWriter out;
 
     public HashsumFileVisitor(OutputStreamWriter out) {
         this.out = out;

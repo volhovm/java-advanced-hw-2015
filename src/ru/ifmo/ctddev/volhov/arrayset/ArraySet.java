@@ -1,6 +1,5 @@
 package ru.ifmo.ctddev.volhov.arrayset;
 
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.function.Function;
 
@@ -45,25 +44,19 @@ public class ArraySet<T> implements NavigableSet<T> {
         } else return i;
     }
 
-    private int search(T t) {
-        return search(t, i -> i == 0);
-    }
-
     public ArraySet() {
-        this((T[]) new Object[0], new Comparator<T>() {
-            @Override
-            public int compare(T t1, T t2) {
-                return 0;
-            }
-        }, 0, 0, false);
+        this((T[]) new Object[0], (t1, t2) -> 0, 0, 0, false);
     }
 
     public ArraySet(Collection<T> collection, Comparator<T> comparator) {
         this.comparator = comparator;
-        TreeSet<T> treeSet = new TreeSet<T>(comparator);
+
+        // FIXME get rid of TreeSet (Do I really need it?)
+        TreeSet<T> treeSet = new TreeSet<>(comparator);
         treeSet.addAll(collection);
         T[] tempArray = (T[]) new Object[treeSet.size()];
         treeSet.toArray(tempArray);
+
         this.array = tempArray;
         Arrays.sort(this.array, comparator);
         leftBound = 0;
@@ -72,14 +65,8 @@ public class ArraySet<T> implements NavigableSet<T> {
     }
 
     public <E extends Comparable<T>> ArraySet(Collection<T> collection) {
-        this(collection, new Comparator<T>() {
-            @Override
-            public int compare(T t, T t1) {
-                return ((E) t).compareTo((T) t1);
-            }
-        });
+        this(collection, (t, t1) -> ((E) t).compareTo((T) t1));
         comparatorNative = true;
-//        this((E[]) collection.toArray());
     }
 
     public ArraySet(T[] array, Comparator<T> comparator) {
@@ -88,7 +75,6 @@ public class ArraySet<T> implements NavigableSet<T> {
 
     private ArraySet(T[] array, Comparator<T> comparator, int leftBound, int rightBound, boolean isCompNative) {
         this.array = array;
-//        Arrays.sort(this.array, comparator);
 //        if (leftBound > rightBound)
 //            throw new IllegalArgumentException("Can't construct set with leftBound > rightBound: " +
 //                    leftBound + " " + rightBound);
@@ -125,12 +111,12 @@ public class ArraySet<T> implements NavigableSet<T> {
 
     @Override
     public T pollFirst() {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("ArraySet is immutable");
     }
 
     @Override
     public T pollLast() {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("ArraySet is immutable");
     }
 
     @Override
@@ -193,12 +179,12 @@ public class ArraySet<T> implements NavigableSet<T> {
 
     @Override
     public boolean add(T t) {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("ArraySet is immutable");
     }
 
     @Override
     public boolean remove(Object o) {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("ArraySet is immutable");
     }
 
     @Override
@@ -213,27 +199,27 @@ public class ArraySet<T> implements NavigableSet<T> {
 
     @Override
     public boolean addAll(Collection<? extends T> collection) {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("ArraySet is immutable");
     }
 
     @Override
     public boolean retainAll(Collection<?> collection) {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("ArraySet is immutable");
     }
 
     @Override
     public boolean removeAll(Collection<?> collection) {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("ArraySet is immutable");
     }
 
     @Override
     public void clear() {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("ArraySet is immutable");
     }
 
     @Override
     public NavigableSet<T> descendingSet() {
-        return new ArraySet<T>(array, new Comparator<T>() {
+        return new ArraySet<>(array, new Comparator<T>() {
             @Override
             public int compare(T t, T t1) {
                 if (comparator.compare(t, t1) > 0) return -1;
@@ -252,7 +238,7 @@ public class ArraySet<T> implements NavigableSet<T> {
         if (from > to) throw new IllegalArgumentException("'from' is greater than 'to'");
         if (from < leftBound || to > rightBound)
             throw new IllegalArgumentException("Given element is outside the range");
-        return new ArraySet<T>(array, comparator, from, to, comparatorNative);
+        return new ArraySet<>(array, comparator, from, to, comparatorNative);
     }
 
     @Override
@@ -264,7 +250,7 @@ public class ArraySet<T> implements NavigableSet<T> {
         int to = search(e1, i -> b1 ? (i <= 0) : (i < 0));
 //        if (!contains(e1)) to--;
         try {
-            return new ArraySet<T>(array, comparator, from, to + 1, comparatorNative);
+            return new ArraySet<>(array, comparator, from, to + 1, comparatorNative);
         } catch (Exception e) {
             System.out.println("Exception in subset: " + t + " " + e1 + " " + b + " " + b1);
             System.out.println(dumpS());

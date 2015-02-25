@@ -1,10 +1,8 @@
 package ru.ifmo.ctddev.volhov.walk;
 
-import com.sun.istack.internal.NotNull;
-
 import java.io.*;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * @author volhov
