@@ -11,7 +11,7 @@ import java.nio.file.Paths;
 
 public class RecursiveWalk {
     public static void main(String[] args) {
-        if (args == null || args.length != 2) {
+        if (args == null || args.length != 2 || args[0] == null || args[1] == null) {
             System.out.println("format: Walk input output");
             return;
         }
