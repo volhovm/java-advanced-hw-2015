@@ -11,26 +11,25 @@ import java.util.function.Function;
 @SuppressWarnings({"unchecked", "NullableProblems"})
 public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     private boolean comparatorNative;
-    final private Comparator<T> comparator;
+//    final private Comparator<T> comparator;
     final private int leftBound, rightBound; // [..)
-    final private T[] array;
+    final private ArrayWrapper<T> array;
 
 
     public ArraySet() {
-        this((T[]) new Object[0], (t1, t2) -> 0, 0, 0, false);
+        this(new ArrayWrapper((T[]) new Object[0], (t1, t2) -> 0), 0, 0, false);
     }
     public ArraySet(Collection<T> collection, Comparator<T> comparator) {
-        this.comparator = comparator;
 
         TreeSet<T> treeSet = new TreeSet<>(comparator);
         treeSet.addAll(collection);
         T[] tempArray = (T[]) new Object[treeSet.size()];
         treeSet.toArray(tempArray);
 
-        this.array = tempArray;
-        Arrays.sort(this.array, comparator);
+        this.array = new ArrayWrapper<T>(tempArray, comparator);
+        array.sort();
         leftBound = 0;
-        rightBound = array.length;
+        rightBound = array.size();
         comparatorNative = false;
     }
 
@@ -40,37 +39,40 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     }
 
     public ArraySet(T[] array, Comparator<T> comparator) {
-        this(array, comparator, 0, array.length, false);
+        this(new ArrayWrapper<T>(array, comparator), 0, array.length, false);
     }
 
-    private ArraySet(T[] array, Comparator<T> comparator, int leftBound, int rightBound, boolean isCompNative) {
+    private ArraySet(ArrayWrapper<T> array, int leftBound, int rightBound, boolean isCompNative) {
         this.array = array;
         this.leftBound = leftBound;
         this.rightBound = leftBound >= rightBound ? leftBound : rightBound;
-        this.comparator = comparator;
         this.comparatorNative = isCompNative;
     }
 
+    // FIXME from here it's broken
     private int search(T t, Function<Integer, Boolean> predicate) {
-        int i = Arrays.binarySearch(array, leftBound, rightBound, t, comparator);
-        if (i < 0) i = i - (2 * i) - 1;
+        int i = array.binarySearch(leftBound, rightBound, t);
+        if (array.reversed) {
+            final Function<Integer, Boolean> finalPredicate = predicate;
+            predicate = index -> !finalPredicate.apply(index);
+        }
 
         if (predicate.apply(-1)) {
             if (i >= rightBound) i = rightBound - 1;
             for (; i >= 0; i--) {
-                if (predicate.apply(comparator.compare(array[i], t))) return i;
+                if (predicate.apply(array.comparator.compare(array.get(i), t))) return i;
             }
             return -1;
         } else if (predicate.apply(1)) {
-            for (; i < array.length; i++) {
-                if (predicate.apply(comparator.compare(array[i], t))) return i;
+            for (; i < array.size(); i++) {
+                if (predicate.apply(array.comparator.compare(array.get(i), t))) return i;
             }
             return rightBound;
         } else return i;
     }
 
     private T getOrNull(int index) {
-        if (inBounds(index)) return array[index];
+        if (inBounds(index)) return array.get(index);
         else return null;
     }
 
@@ -119,7 +121,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         if (o == null) throw new NullPointerException();
         T item = (T) o; //ClassCastException
         int index = search(item, i -> i == 0);
-        return inBounds(index) && comparator.compare(array[index], item) == 0;
+        return inBounds(index) && array.comparator.compare(array.get(index), item) == 0;
     }
 
     private boolean inBounds(int index) {
@@ -138,19 +140,14 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
 
             @Override
             public T next() {
-                return array[++pointer];
+                return array.get(++pointer);
             }
         };
     }
 
-    // FIXME descendingSet must be O(1)
     @Override
-    public NavigableSet<T> descendingSet() {
-        T[] revArray = (T[]) new Object[array.length];
-        for (int i = 0; i < array.length; i++) {
-                revArray[i] = array[array.length - 1 - i];
-        }
-        return new ArraySet<>(revArray, comparator.reversed(),
+    public ArraySet<T> descendingSet() {
+        return new ArraySet<T>(array.reversedArray(),
                 leftBound, rightBound, comparatorNative);
     }
 
@@ -159,23 +156,23 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         return descendingSet().iterator();
     }
 
-    private NavigableSet<T> subSet(int from, int to) {
+    private ArraySet<T> subSet(int from, int to) {
         if (from > to) throw new IllegalArgumentException("'from' is greater than 'to'");
         if (from < leftBound || to > rightBound)
             throw new IllegalArgumentException("Given element is outside the range");
-        return new ArraySet<>(array, comparator, from, to, comparatorNative);
+        return new ArraySet<T>(array, from, to, comparatorNative);
     }
 
     @Override
-    public NavigableSet<T> subSet(T t, boolean b, T e1, boolean b1) {
+    public ArraySet<T> subSet(T t, boolean b, T e1, boolean b1) {
         if (t == null || e1 == null) throw new NullPointerException();
-        if (comparator.compare(t, e1) > 0)
+        if (array.comparator.compare(t, e1) > 0)
             throw new IllegalArgumentException("First element must be less than the second one");
         int from = search(t, i -> b ? (i >= 0) : (i > 0));
         int to = search(e1, i -> b1 ? (i <= 0) : (i < 0));
 //        if (!contains(e1)) to--;
         try {
-            return new ArraySet<>(array, comparator, from, to + 1, comparatorNative);
+            return new ArraySet<>(array, from, to + 1, comparatorNative);
         } catch (Exception e) {
             System.out.println("Exception in subset: " + t + " " + e1 + " " + b + " " + b1);
             System.out.println(dumpS());
@@ -184,30 +181,30 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     }
 
     @Override
-    public NavigableSet<T> headSet(T t, boolean b) {
+    public ArraySet<T> headSet(T t, boolean b) {
         int to = search(t, i -> b ? (i <= 0) : (i < 0));
         return subSet(leftBound, to + 1);
     }
 
     @Override
-    public NavigableSet<T> tailSet(T t, boolean b) {
+    public ArraySet<T> tailSet(T t, boolean b) {
         int from = search(t, i -> b ? (i >= 0) : (i > 0));
         return subSet(from, rightBound);
     }
 
     @Override
     public Comparator<? super T> comparator() {
-        if (!comparatorNative) return comparator;
+        if (!comparatorNative) return array.comparator;
         else return null;
     }
 
     @Override
-    public SortedSet<T> subSet(T t, T e1) {
+    public ArraySet<T> subSet(T t, T e1) {
         return subSet(t, true, e1, false);
     }
 
     @Override
-    public SortedSet<T> headSet(T t) {
+    public ArraySet<T> headSet(T t) {
         return headSet(t, false);
     }
 
@@ -219,19 +216,19 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     @Override
     public T first() {
         if (isEmpty()) throw new NoSuchElementException();
-        return array[leftBound];
+        return array.get(leftBound);
     }
 
     @Override
     public T last() {
         if (isEmpty()) throw new NoSuchElementException();
-        return array[rightBound - 1];
+        return array.get(rightBound - 1);
     }
 
     private String dumpS() {
         String ret = "";
         ret += "Arrayset dump: size " + size() + ", content:\n";
-        for (int i = leftBound; i < rightBound; i++) ret += array[i].toString() + "\n";
+        for (T t : this) ret += t.toString() + "\n";
         return ret;
     }
 }
