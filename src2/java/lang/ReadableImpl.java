@@ -1,4 +1,4 @@
-package ru.ifmo.ctddev.volhov.implementor; 
+package java.lang;
 
 class ReadableImpl implements java.lang.Readable {
 

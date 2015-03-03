@@ -11,7 +11,10 @@ case "$1" in
     ArraySet)
         args=$args"arrayset.Tester NavigableSet ru.ifmo.ctddev.volhov.arrayset.ArraySet"
         ;;
-    *) echo "Usage: sh runTest.sh [Walk|ArraySet] [salt]"
+    Implementor)
+        args=$args"implementor.Tester interface ru.ifmo.ctddev.volhov.implementor.Implementor"
+        ;;
+    *) echo "Usage: sh runTest.sh [Walk|ArraySet|Implementor] [salt]"
        exit
        ;;
 esac
