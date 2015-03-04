@@ -16,4 +16,9 @@ class TestInterfaceImpl implements ru.ifmo.ctddev.volhov.implementor.TestInterfa
     public void voidMethod(java.lang.Void p0) {
         return ;
     }
+
+    @Override
+    public void twiceOverriden() {
+        return ;
+    }
 }

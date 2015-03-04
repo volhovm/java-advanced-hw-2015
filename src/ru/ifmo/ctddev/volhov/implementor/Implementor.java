@@ -1,6 +1,7 @@
 package ru.ifmo.ctddev.volhov.implementor;
 
 import info.kgeorgiy.java.advanced.implementor.Impler;
+import info.kgeorgiy.java.advanced.implementor.ImplerException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -21,27 +22,20 @@ import java.util.stream.Collectors;
 public class Implementor implements Impler {
     private static final String TAB = "    ";
 
-    public static void main(String[] args) {
-        args = new String[]{
-//                "java.lang.Readable"
-//                "ru.ifmo.ctddev.volhov.implementor.TestInterface"
-                "ru.ifmo.ctddev.volhov.implementor.TestAbstractClassB"
-//                "java.util.ListResourceBundle"
-//                "java.util.logging.Handler"
-//                "java.util.AbstractSet"
-        };
+    public static void main(String[] args) throws ImplerException {
 
-        if (args == null || args.length != 1 || args[0] == null) {
-            System.out.println("arg[0] should be full name of the class/interface");
-            return;
-        }
 
-        try {
-            Class cls = Class.forName(args[0]);
+            Class cls =
+//                    java.lang.Readable.class
+//                    ru.ifmo.ctddev.volhov.implementor.TestInterface.class
+//                    void.class
+//                    ru.ifmo.ctddev.volhov.implementor.TestAbstractClassB.class
+//                    java.util.ListResourceBundle.class
+//                    java.util.logging.Handler.class
+//                    java.util.AbstractSet.class
+                    javax.naming.ldap.LdapReferralException.class
+                    ;
             new Implementor().implement(cls, new File("src2/"));
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
     }
 
     private static String getModifiers(int mods) {
@@ -141,13 +135,11 @@ public class Implementor implements Impler {
                 };
 
     private static Method[] getNeededMethods(Class cls) {
-        ArrayList<Method> methods = Arrays.stream(cls.getMethods())
+        ArrayList<Method> methods = Arrays.stream(cls.getDeclaredMethods())
                 .filter(abstr)
-                .map(baseMethod)
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
         ArrayList<Method> overridden = Arrays.stream(cls.getMethods())
                 .filter(abstr.negate())
-                .map(baseMethod)
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
         ArrayDeque<Class> deque = new ArrayDeque<>();
         deque.push(cls);
@@ -196,20 +188,21 @@ public class Implementor implements Impler {
     }
 
     @Override
-    public void implement(Class<?> token, File root) {
+    public void implement(Class<?> token, File root) throws ImplerException {
         try {
+            if (token.getPackage() == null) throw new ImplerException("null package, maybe void.class or like that");
             String fileDir = root.getAbsolutePath() + "/"
                     + token.getPackage().getName().replace('.', '/')
                     + "/";
             if (!new File(fileDir).exists()) {
-                System.out.println("Creating dir: " + fileDir);
+//                System.out.println("Creating dir: " + fileDir);
                 if (!new File(fileDir).mkdirs()) System.out.println("Failed to create dir");
             }
             String file = fileDir + token.getSimpleName() + "Impl.java";
             File fileClass = new File(file);
 //            Thread.sleep(10000);
             Thread.sleep(1);
-            System.out.println("Writing to " + fileClass);
+//            System.out.println("Writing to " + fileClass);
             PrintWriter cout = new PrintWriter(fileClass);
             cout.write("package " + token.getPackage().getName() + ";\n\n");
             cout.write(getImplication(token));

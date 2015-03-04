@@ -13,4 +13,5 @@ public interface TestInterface {
     static String staticMethod() { return "lol"; }
     default Method mdaaa(int input) { return null; }
     void voidMethod(Void heh);
+    void twiceOverriden();
 }

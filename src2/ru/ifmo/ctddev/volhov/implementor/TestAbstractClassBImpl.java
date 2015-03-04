@@ -26,4 +26,9 @@ class TestAbstractClassBImpl extends ru.ifmo.ctddev.volhov.implementor.TestAbstr
     public void implement(java.lang.Class p0, java.io.File p1) throws info.kgeorgiy.java.advanced.implementor.ImplerException {
         return ;
     }
+
+    @Override
+    public void twiceOverriden() {
+        return ;
+    }
 }
