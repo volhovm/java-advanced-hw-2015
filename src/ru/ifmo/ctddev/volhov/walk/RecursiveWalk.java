@@ -12,11 +12,11 @@ import java.nio.file.Paths;
 public class RecursiveWalk {
     public static void main(String[] args) {
         if (args == null || args.length != 2 || args[0] == null || args[1] == null) {
-            System.out.println("format: Walk input output");
+            System.err.println("format: Walk input output");
             return;
         }
 
-        try (BufferedReader br = new BufferedReader(new FileReader(args[0]))) {
+        try (BufferedReader br = Files.newBufferedReader(Paths.get(args[0]))) {
             try (OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(args[1]))) {
                 while (true) {
                     String curr = null;

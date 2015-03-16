@@ -12,7 +12,7 @@ case "$1" in
         args=$args"arrayset.Tester NavigableSet ru.ifmo.ctddev.volhov.arrayset.ArraySet"
         ;;
     Implementor)
-        args=$args"implementor.Tester interface ru.ifmo.ctddev.volhov.implementor.Implementor"
+        args=$args"implementor.Tester class ru.ifmo.ctddev.volhov.implementor.Implementor"
         ;;
     *) echo "Usage: sh runTest.sh [Walk|ArraySet|Implementor] [salt]"
        exit

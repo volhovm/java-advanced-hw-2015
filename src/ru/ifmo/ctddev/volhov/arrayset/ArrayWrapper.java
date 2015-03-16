@@ -13,7 +13,7 @@ public class ArrayWrapper<T> {
     public final Comparator<T> comparator;
     public final boolean reversed;
 
-    public <E extends Comparable<T>> ArrayWrapper(E[] array) {
+    public <E extends Comparable<? super T>> ArrayWrapper(T[] array) {
         this((T[]) array, new Comparator<T>() {
             @Override
             public int compare(T t, T t1) {

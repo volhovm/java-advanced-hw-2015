@@ -3,6 +3,7 @@ package ru.ifmo.ctddev.volhov.implementor;
 import info.kgeorgiy.java.advanced.implementor.Impler;
 import info.kgeorgiy.java.advanced.implementor.ImplerException;
 
+import javax.sql.rowset.CachedRowSet;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -25,17 +26,19 @@ public class Implementor implements Impler {
     public static void main(String[] args) throws ImplerException {
 
 
-            Class cls =
+        Class cls =
 //                    java.lang.Readable.class
 //                    ru.ifmo.ctddev.volhov.implementor.TestInterface.class
 //                    void.class
 //                    ru.ifmo.ctddev.volhov.implementor.TestAbstractClassB.class
 //                    java.util.ListResourceBundle.class
 //                    java.util.logging.Handler.class
+//                    javax.xml.bind.Element.class
+                CachedRowSet.class
 //                    java.util.AbstractSet.class
-                    javax.naming.ldap.LdapReferralException.class
-                    ;
-            new Implementor().implement(cls, new File("src2/"));
+//                    javax.naming.ldap.LdapReferralException.class
+                ;
+        new Implementor().implement(cls, new File("src2/"));
     }
 
     private static String getModifiers(int mods) {
@@ -87,10 +90,10 @@ public class Implementor implements Impler {
 //            if (!Modifier.isAbstract(method.getModifiers())) continue;
             str.append("\n\n").append(TAB);
             str.append("@Override\n").append(TAB);
-            for (Annotation annotation : method.getDeclaredAnnotations()) {
-                str.append(annotation.toString())
-                        .append("\n").append(TAB);
-            }
+//            for (Annotation annotation : method.getDeclaredAnnotations()) {
+//                str.append(annotation.toString())
+//                        .append("\n").append(TAB);
+//            }
             str.append(getModifiers(method.getModifiers()));
             str.append(method.getReturnType().getCanonicalName()).append(" ");
             Class[] paramTypes = method.getParameterTypes();
@@ -102,12 +105,12 @@ public class Implementor implements Impler {
                 if (i != method.getParameterCount() - 1) str.append(", ");
             }
             str.append(")");
-            if (method.getExceptionTypes().length != 0) {
-                str.append(" throws ");
-            }
-            str.append(Arrays.stream(method.getExceptionTypes()).map(Class::getName)
-                    .collect(Collectors.joining(", "))).append(" {")
-                    .append("\n").append(TAB).append(TAB);
+//            if (method.getExceptionTypes().length != 0) {
+//                str.append(" throws ");
+//            }
+//            str.append(Arrays.stream(method.getExceptionTypes()).map(Class::getName)
+//                    .collect(Collectors.joining(", ")))
+            str.append(" {").append("\n").append(TAB).append(TAB);
             str.append("return ").append(defaultValue(method.getReturnType()))
                     .append(";\n").append(TAB).append("}");
         }
@@ -125,22 +128,25 @@ public class Implementor implements Impler {
     private static Predicate<Method> abstr = a -> Modifier.isAbstract(a.getModifiers());
     private static Predicate<Object> nonnull = a -> a != null;
     private static Function<Method, Method> baseMethod = a -> {
-                    try {
-                        Method base = (a.getDeclaringClass().getSuperclass().getDeclaredMethod(a.getName()));
-                        if (base.equals(a)) return a;
-                        return Implementor.baseMethod.apply(base);
-                    } catch (Exception e) {
-                        return a;
-                    }
-                };
+        try {
+            Method base = (a.getDeclaringClass().getSuperclass().getDeclaredMethod(a.getName()));
+            if (base.equals(a)) return a;
+            return Implementor.baseMethod.apply(base);
+        } catch (Exception e) {
+            return a;
+        }
+    };
+
 
     private static Method[] getNeededMethods(Class cls) {
-        ArrayList<Method> methods = Arrays.stream(cls.getDeclaredMethods())
+        HashSet<MethodWrapper> methods = Arrays.stream(cls.getDeclaredMethods())
                 .filter(abstr)
-                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-        ArrayList<Method> overridden = Arrays.stream(cls.getMethods())
+                .map(MethodWrapper::new)
+                .collect(HashSet::new, HashSet::add, HashSet::addAll);
+        HashSet<MethodWrapper> overridden = Arrays.stream(cls.getMethods())
                 .filter(abstr.negate())
-                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+                .map(MethodWrapper::new)
+                .collect(HashSet::new, HashSet::add, HashSet::addAll);
         ArrayDeque<Class> deque = new ArrayDeque<>();
         deque.push(cls);
         while (!deque.isEmpty()) {
@@ -152,11 +158,12 @@ public class Implementor implements Impler {
                                     && !overridden.contains(a)
                                     && !methods.contains(a)
                     ) // bullshit
+                    .map(MethodWrapper::new)
                     .forEach(methods::add);
-            Arrays.stream(parent.getMethods()).filter(abstr.negate()).map(baseMethod).forEach(overridden::add);
+            Arrays.stream(parent.getMethods()).filter(abstr.negate()).map(MethodWrapper::new).forEach(overridden::add);
         }
         Method[] ret = new Method[methods.size()];
-        methods.toArray(ret);
+        methods.stream().map(MethodWrapper::toMethod).collect(HashSet::new, HashSet::add, HashSet::addAll).toArray(ret);
         return ret;
     }
 
@@ -213,5 +220,10 @@ public class Implementor implements Impler {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    //    @Override
+    public void implementJar(Class<?> token, File jarFile) throws ImplerException {
+        // FIXME implement implementJar method
     }
 }

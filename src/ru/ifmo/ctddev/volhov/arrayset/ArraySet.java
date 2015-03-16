@@ -1,17 +1,17 @@
 package ru.ifmo.ctddev.volhov.arrayset;
 
 import java.util.*;
-import java.util.function.Function;
+import java.util.function.IntPredicate;
 
 /**
  * @author volhovm
  *         Created on 2/24/15
  */
 
-@SuppressWarnings({"unchecked", "NullableProblems"})
+@SuppressWarnings({"NullableProblems"})
 public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     private boolean comparatorNative;
-//    final private Comparator<T> comparator;
+    //    final private Comparator<T> comparator;
     final private int leftBound, rightBound; // [..)
     final private ArrayWrapper<T> array;
 
@@ -19,6 +19,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     public ArraySet() {
         this(new ArrayWrapper((T[]) new Object[0], (t1, t2) -> 0), 0, 0, false);
     }
+
     public ArraySet(Collection<T> collection, Comparator<T> comparator) {
 
         TreeSet<T> treeSet = new TreeSet<>(comparator);
@@ -49,23 +50,21 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         this.comparatorNative = isCompNative;
     }
 
-    // FIXME from here it's broken
-    private int search(T t, Function<Integer, Boolean> predicate) {
+    private int search(T t, IntPredicate predicate) {
         int i = array.binarySearch(leftBound, rightBound, t);
         if (array.reversed) {
-            final Function<Integer, Boolean> finalPredicate = predicate;
-            predicate = index -> !finalPredicate.apply(index);
+            predicate = predicate.negate();
         }
 
-        if (predicate.apply(-1)) {
+        if (predicate.test(-1)) {
             if (i >= rightBound) i = rightBound - 1;
             for (; i >= 0; i--) {
-                if (predicate.apply(array.comparator.compare(array.get(i), t))) return i;
+                if (predicate.test(array.comparator.compare(array.get(i), t))) return i;
             }
             return -1;
-        } else if (predicate.apply(1)) {
+        } else if (predicate.test(1)) {
             for (; i < array.size(); i++) {
-                if (predicate.apply(array.comparator.compare(array.get(i), t))) return i;
+                if (predicate.test(array.comparator.compare(array.get(i), t))) return i;
             }
             return rightBound;
         } else return i;
