@@ -3,17 +3,15 @@ package ru.ifmo.ctddev.volhov.implementor;
 import info.kgeorgiy.java.advanced.implementor.Impler;
 import info.kgeorgiy.java.advanced.implementor.ImplerException;
 
-import javax.sql.rowset.CachedRowSet;
+import javax.management.Descriptor;
+import javax.management.ImmutableDescriptor;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
 /**
  * @author volhovm
@@ -23,9 +21,7 @@ import java.util.stream.Collectors;
 public class Implementor implements Impler {
     private static final String TAB = "    ";
 
-    public static void main(String[] args) throws ImplerException {
-
-
+    public static void main(String[] args) throws ImplerException, NoSuchMethodException {
         Class cls =
 //                    java.lang.Readable.class
 //                    ru.ifmo.ctddev.volhov.implementor.TestInterface.class
@@ -34,10 +30,17 @@ public class Implementor implements Impler {
 //                    java.util.ListResourceBundle.class
 //                    java.util.logging.Handler.class
 //                    javax.xml.bind.Element.class
-                CachedRowSet.class
+//                    BMPImageWriteParam.class
+//                RelationNotFoundException.class
+//                IIOException.class
+                ImmutableDescriptor.class
+//                    CachedRowSet.class
 //                    java.util.AbstractSet.class
 //                    javax.naming.ldap.LdapReferralException.class
                 ;
+        HashSet<MethodWrapper> hashSet = new HashSet<>();
+        hashSet.add(new MethodWrapper(ImmutableDescriptor.class.getDeclaredMethod("getFieldNames")));
+        boolean contains = hashSet.contains(new MethodWrapper(Descriptor.class.getMethod("getFieldNames")));
         new Implementor().implement(cls, new File("src2/"));
     }
 
@@ -60,47 +63,37 @@ public class Implementor implements Impler {
         str.append("class ").append(className);
         if (!cls.isInterface()) str.append(" extends ").append(cls.getName());
         else str.append(" implements ").append(cls.getName());
-//        if (cls.getSuperclass() != null) {
-//            str.append(" extends ").append(cls.getSuperclass().getName());
-//        }
-//        if (cls.getInterfaces().length != 0) {
-//            str.append(" implements ");
-//            str.append(Arrays.stream(cls.getInterfaces())
-//                    .map(Class::getName)
-//                    .collect(Collectors.joining(", ")));
-//        }
         str.append(" {");
 
-        // Fields
-//        for (Field field : cls.getFields()) {
-//            str.append(getModifiers(field.getModifiers()))
-//                    .append(field.getType().getName()).append(" ")
-//                    .append(field.getName()).append(";\n").append(TAB);
-//        }
-
         // Constructors
-//        for (Constructor constructor : cls.getConstructors()) {
-//
-//        }
+        for (Constructor constructor : cls.getConstructors()) {
+            str.append("\n\n").append(TAB);
+            str.append(getModifiers(constructor.getModifiers()));
+            str.append(className).append("(");
+            Class[] paramTypes = constructor.getParameterTypes();
+            for (int i = 0; i < constructor.getParameterCount(); i++) {
+                str.append(paramTypes[i].getCanonicalName()).append(" p").append(i);
+                if (i != constructor.getParameterCount() - 1) str.append(", ");
+            }
+            str.append(") {\n").append(TAB).append(TAB);
+            str.append("super(");
+            for (int i = 0; i < constructor.getParameterCount(); i++) {
+                str.append("p").append(i);
+                if (i != constructor.getParameterCount() - 1) str.append(", ");
+            }
+            str.append(");\n").append(TAB).append("}\n");
+        }
 
         Method[] methods = getNeededMethods(cls);
         // Methods
         for (Method method : methods) {
-//            if (!method.getDeclaringClass().equals(cls)) continue;
-//            if (!Modifier.isAbstract(method.getModifiers())) continue;
             str.append("\n\n").append(TAB);
             str.append("@Override\n").append(TAB);
-//            for (Annotation annotation : method.getDeclaredAnnotations()) {
-//                str.append(annotation.toString())
-//                        .append("\n").append(TAB);
-//            }
             str.append(getModifiers(method.getModifiers()));
             str.append(method.getReturnType().getCanonicalName()).append(" ");
             Class[] paramTypes = method.getParameterTypes();
-            Annotation[][] annotations = method.getParameterAnnotations();
             str.append(method.getName()).append('(');
             for (int i = 0; i < method.getParameterCount(); i++) {
-                str.append(Arrays.stream(annotations[i]).map(Annotation::toString).collect(Collectors.joining(",")));
                 str.append(paramTypes[i].getCanonicalName()).append(" p").append(i);
                 if (i != method.getParameterCount() - 1) str.append(", ");
             }
@@ -126,21 +119,13 @@ public class Implementor implements Impler {
     }
 
     private static Predicate<Method> abstr = a -> Modifier.isAbstract(a.getModifiers());
+    private static Predicate<Method> nonFinal = a -> !Modifier.isFinal(a.getModifiers());
     private static Predicate<Object> nonnull = a -> a != null;
-    private static Function<Method, Method> baseMethod = a -> {
-        try {
-            Method base = (a.getDeclaringClass().getSuperclass().getDeclaredMethod(a.getName()));
-            if (base.equals(a)) return a;
-            return Implementor.baseMethod.apply(base);
-        } catch (Exception e) {
-            return a;
-        }
-    };
-
 
     private static Method[] getNeededMethods(Class cls) {
         HashSet<MethodWrapper> methods = Arrays.stream(cls.getDeclaredMethods())
                 .filter(abstr)
+                .filter(nonFinal)
                 .map(MethodWrapper::new)
                 .collect(HashSet::new, HashSet::add, HashSet::addAll);
         HashSet<MethodWrapper> overridden = Arrays.stream(cls.getMethods())
@@ -153,14 +138,17 @@ public class Implementor implements Impler {
             Class parent = deque.pop();
             if (parent.getSuperclass() != null) deque.addFirst(parent.getSuperclass());
             if (parent.getInterfaces().length != 0) Arrays.stream(parent.getInterfaces()).forEach(deque::addLast);
-            Arrays.stream(parent.getMethods()).filter(abstr).map(baseMethod)
-                    .filter(a -> !Modifier.isFinal(a.getModifiers())
-                                    && !overridden.contains(a)
-                                    && !methods.contains(a)
-                    ) // bullshit
+            Arrays.stream(parent.getMethods())
+                    .filter(abstr)
+                    .filter(nonFinal)
                     .map(MethodWrapper::new)
+                    .filter(a -> !overridden.contains(a) && !methods.contains(a))
                     .forEach(methods::add);
-            Arrays.stream(parent.getMethods()).filter(abstr.negate()).map(MethodWrapper::new).forEach(overridden::add);
+            Arrays.stream(parent.getMethods())
+                    .filter(abstr.negate())
+                    .filter(nonFinal)
+                    .map(MethodWrapper::new)
+                    .forEach(overridden::add);
         }
         Method[] ret = new Method[methods.size()];
         methods.stream().map(MethodWrapper::toMethod).collect(HashSet::new, HashSet::add, HashSet::addAll).toArray(ret);
