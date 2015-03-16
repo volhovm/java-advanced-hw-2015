@@ -8,7 +8,7 @@ import java.util.function.IntPredicate;
  *         Created on 2/24/15
  */
 
-@SuppressWarnings({"NullableProblems"})
+@SuppressWarnings({"NullableProblems", "unchecked"})
 public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     private boolean comparatorNative;
     //    final private Comparator<T> comparator;
