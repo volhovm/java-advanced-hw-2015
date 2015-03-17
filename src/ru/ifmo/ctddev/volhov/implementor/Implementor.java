@@ -12,37 +12,52 @@ import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.zip.ZipEntry;
 
 /**
- * @author volhovm
- *         Created on 3/1/15
+ * The class represents the basic implementation of {@link info.kgeorgiy.java.advanced.implementor.JarImpler}
+ * interface.
+ * <p>
+ * It can generate implementation (the <code>.java</code> file) for those interfaces/classes that can be
+ * implemented/extended. All methods that should be overridden are present, their default return value
+ * corresponds to javadoc primitive types description
+ * (see <a href="http://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html">Primitive Data Types</a>).
+ * The class name consists of the name of class that is implemented plus "Impl" suffix.
+ * <p>
+ * It can also generate <code>.jar</code> archive with that certain class.
+ * <p>
+ * If it's impossible to generate implementation or jar for some reason, than
+ * {@link info.kgeorgiy.java.advanced.implementor.ImplerException} is thrown.
+ *
+ * @author  Volkhov Mykhail (volhovm)
+ * @see     info.kgeorgiy.java.advanced.implementor.Impler
+ * @see     info.kgeorgiy.java.advanced.implementor.JarImpler
+ * @see     info.kgeorgiy.java.advanced.implementor.ImplerException
  */
-
-@SuppressWarnings({"NullableProblems", "unchecked"})
 public class Implementor implements JarImpler {
+
+    /**
+     * Default value for indentation when generating {@code .java} file.
+     */
     private static final String TAB = "    ";
 
+    /**
+     * Creates a simple entry of {@link Implementor} class.
+     */
+    public Implementor() {
+    }
+
+    /**
+     * Produces jar archive with implementation of a class.
+     * <p>
+     * If flag in {@code args[0]} is "-jar", then {@link Implementor#main} writes to file, specified by string
+     * in {@code args[2]}, the jar, which contains implementation of class given in {@code args[1]}.
+     * <p>
+     *
+     * @param args  arguments for main corresponding to description.
+     * @see         #implement(Class, File)
+     * @see         #implementJar(Class, File)
+     */
     public static void main(String[] args) {
-//        Class cls =
-//                Completions.class
-//                java.lang.Readable.class
-//                ru.ifmo.ctddev.volhov.implementor.TestInterface.class
-//                void.class
-//                ru.ifmo.ctddev.volhov.implementor.TestAbstractClassB.class
-//                java.util.ListResourceBundle.class
-//                java.util.logging.Handler.class
-//                javax.xml.bind.Element.class
-//                BMPImageWriteParam.class
-//                RelationNotFoundException.class
-//                IIOException.class
-//                ImmutableDescriptor.class
-//                CachedRowSet.class
-//                java.util.AbstractSet.class
-//                javax.naming.ldap.LdapReferralException.class
-//                ORB.class
-//                ;
-//        new Implementor().implement(cls, new File("src2/"));
         if (args != null && args.length == 3 && args[0] != null
                 && args[0].equals("-jar") && args[1] != null && args[2] != null) {
             try {
@@ -64,7 +79,14 @@ public class Implementor implements JarImpler {
         }
     }
 
-
+    /**
+     * Transforms given class to the string representation of it's implementation.
+     * The name of new class is the old one, suffixed with "Impl".
+     *
+     * @param cls               class to get implementation of.
+     * @return                  string, representing the implementation.
+     * @throws ImplerException  when class can't be implemented (final, primitive, all constructors are private).
+     */
     private static String getImplication(Class cls) throws ImplerException {
         StringBuilder str = new StringBuilder();
 
@@ -126,9 +148,28 @@ public class Implementor implements JarImpler {
         return str.toString();
     }
 
+    /**
+     * Predicate, that returns true if given method is abstract.
+     */
     private static Predicate<Method> abstr = a -> Modifier.isAbstract(a.getModifiers());
+
+    /**
+     * Predicate, that returns true if given method is not final.
+     */
     private static Predicate<Method> nonFinal = a -> !Modifier.isFinal(a.getModifiers());
 
+    /**
+     * Retrieves an array of methods to override in the class, which has the given class as base.
+     * <p>
+     * It uses DFS to visit all superclasses and implemented interfaces (classes have the higher
+     * priority) and collects the needed methods, using the {@link ru.ifmo.ctddev.volhov.implementor.MethodWrapper}
+     * class as it represents the abstraction of method signature (that is needed to set the order "overridden by"
+     * on the set of methods from different classes (in the inheritance tree) with the same signature).
+     *
+     * @param cls   class which non-implemented methods are needed to get.
+     * @return      array of methods, that are needed to be implemented in the derivation of {@code cls}.
+     * @see         ru.ifmo.ctddev.volhov.implementor.MethodWrapper
+     */
     private static Method[] getNeededMethods(Class cls) {
         HashSet<MethodWrapper> methods = Arrays.stream(cls.getDeclaredMethods())
                 .filter(abstr)
@@ -162,6 +203,13 @@ public class Implementor implements JarImpler {
         return ret;
     }
 
+    /**
+     * Gets a compilable (that is can be used in java code) string of modifiers, divided by space character.
+     *
+     * @param mods  int, containing modifiers
+     * @return      string, containing string representations of modifiers, divided by space character
+     * @see         Method#getModifiers
+     */
     private static String getModifiers(int mods) {
         StringBuilder str = new StringBuilder();
         if (Modifier.isPrivate(mods)) str.append("private ");
@@ -173,6 +221,13 @@ public class Implementor implements JarImpler {
         return str.toString();
     }
 
+    /**
+     * Gets a compilable (that is can be used in java code) string representation of default value,
+     * specified by {@code returnType}.
+     *
+     * @param returnType    the given class
+     * @return              string, containing the default value, that can be inserted into code and compiled.
+     */
     private static String defaultValue(Class<?> returnType) {
         if (returnType.isPrimitive()) {
             if (returnType.equals(byte.class)) return "(byte)0";

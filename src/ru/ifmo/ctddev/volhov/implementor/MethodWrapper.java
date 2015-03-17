@@ -4,21 +4,48 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 
 /**
- * @author volhovm
- *         Created on 3/12/15
+ * This class represents abstraction of immutable method signature over the given method.
+ * <p>
+ * It can be constructed only from a method, later the given method can be retrieved with {@link #toMethod()}.
+ * <p>
+ * If there are two methods in the implemented class and superclass, and one overrides another, two instances
+ * of {@link ru.ifmo.ctddev.volhov.implementor.MethodWrapper} would be equal and have similar hashcode. The
+ * comparator checks if they have equal names and if their argument type lists are item-by-item equal.
+ *
+ * @author Volkhov Mykhail (volhovm)
  */
-
 public class MethodWrapper {
-    private Method method;
-    private Class[] types;
-    private String name;
 
+    /**
+     * The wrapped method
+     */
+    private final Method method;
+
+    /**
+     * List of type parameters of {@link #method}
+     */
+    private final Class[] types;
+
+    /**
+     * Name of #method
+     */
+    private final String name;
+
+    /**
+     * Creates the MethodWrapper instance of given method
+     * @param method    the method to wrap around
+     */
     public MethodWrapper(Method method) {
         this.method = method;
         types = method.getParameterTypes();
         name = method.getName();
     }
 
+    /**
+     * Retrieves a method from which this instance of {@link ru.ifmo.ctddev.volhov.implementor.MethodWrapper}
+     * was built.
+     * @return  method that was used to construct this entry
+     */
     public Method toMethod() {
         return method;
     }
