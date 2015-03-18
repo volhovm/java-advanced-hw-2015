@@ -63,8 +63,8 @@ public class Implementor implements JarImpler {
             try {
                 Class called = Class.forName(args[1]);
                 File jarFile = new File(args[2]);
-                if (!jarFile.exists()) {
-                    System.err.println("jar not found: " + jarFile.getAbsolutePath());
+                if (jarFile.exists()) {
+                    System.err.println("jar was found: " + jarFile.getAbsolutePath() + ", overwriting");
                 }
                 new Implementor().implementJar(called, jarFile);
             } catch (ClassNotFoundException e) {
