@@ -15,12 +15,12 @@ public class ConcUtils {
         final int n = list.size();
         if (threads == 1) {
             T accumulator = null;
-            if (monoid.zero.isPresent()) {
+            if (monoid.isComplete()) {
                 accumulator = monoid.zero.orElseGet(() -> null).get();
             } else {
                 accumulator = list.get(0);
             }
-            for (int i = monoid.zero.isPresent() ? 0 : 1; i < list.size(); i++) {
+            for (int i = monoid.isComplete() ? 0 : 1; i < list.size(); i++) {
                 accumulator = monoid.op.apply(accumulator, list.get(i));
             }
             return accumulator;
@@ -42,16 +42,14 @@ public class ConcUtils {
                     @Override
                     public void run() {
                         T current;
-                        synchronized (list) { // FIXME delete this
-                            current = foldl(monoid, list.subList(lBound, rBound), 1);
-                        }
+                        current = foldl(monoid, list.subList(lBound, rBound), 1);
                         linearOrder[index] = current;
                     }
                 }));
             }
             threadList.stream().forEach(Thread::start);
             T accumulator = monoid.zero.orElse(() -> list.get(0)).get();
-            for (int i = monoid.zero.isPresent() ? 0 : 1; i < threads; i++) {
+            for (int i = monoid.isComplete() ? 0 : 1; i < threads; i++) {
                 try {
                     threadList.get(i).join();
                     System.out.println("Joined thread #" + i);
@@ -66,8 +64,8 @@ public class ConcUtils {
     }
 
     public static <T> T foldl1(BinaryOperator<T> op, List<T> list, int threads) {
-        if (list.isEmpty()) return null;
-        return foldl(new Monoid<T>(() -> list.get(0), op), list, threads);
+        if (list.isEmpty()) throw new IllegalArgumentException("List must be nonempty"); // It's your fault
+        return foldl(new Monoid<T>(op), list, threads);
     }
 
     public static <T, N> List<N> map(Function<? super T, ? extends N> foo, List<? extends T> list, int threads) {

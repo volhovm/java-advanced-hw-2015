@@ -20,7 +20,7 @@ public class IterativeParallelism implements ListIP {
     public String concat(int threads, List<?> values) throws InterruptedException {
         return ConcUtils.foldl(
                 Monoid.stringConcat(),
-                values.stream().map(Object::toString).parallel().collect(Collectors.toList()),
+                ConcUtils.map(Object::toString, values, threads),
                 threads
         );
     }
@@ -44,13 +44,13 @@ public class IterativeParallelism implements ListIP {
     @Override
     public <T> T maximum(int threads, List<? extends T> values, Comparator<? super T> comparator)
             throws InterruptedException {
-        return null;
+        return ConcUtils.<T>foldl1((a, b) -> comparator.compare(a, b) > 0 ? a : b, (List<T>) values, threads);
     }
 
     @Override
     public <T> T minimum(int threads, List<? extends T> values, Comparator<? super T> comparator)
             throws InterruptedException {
-        return null;
+        return maximum(threads, values, comparator.reversed());
     }
 
     @Override

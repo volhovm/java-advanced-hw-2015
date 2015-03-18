@@ -30,6 +30,10 @@ public class Monoid<T> {
         this.op = op;
     }
 
+    public boolean isComplete() {
+        return zero.isPresent();
+    }
+    
     public static <T> Monoid<List<T>> listConcat() {
         return listConcatWithPred((a, b) -> true);
     }
