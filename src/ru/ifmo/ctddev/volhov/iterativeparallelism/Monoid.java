@@ -35,7 +35,12 @@ public class Monoid<T> {
     }
     
     public static <T> Monoid<List<T>> listConcat() {
-        return listConcatWithPred((a, b) -> true);
+        return new Monoid<List<T>>(LinkedList::new, (a, b) -> {
+            LinkedList<T> ret = new LinkedList<>();
+            ret.addAll(a);
+            ret.addAll(b);
+            return ret;
+        });
     }
 
     public static <T> Monoid<List<T>> listConcatWithPred(BiPredicate<List<T>, List<T>> pred) {

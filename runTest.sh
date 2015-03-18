@@ -14,6 +14,9 @@ case "$1" in
     Implementor)
         args=$args"implementor.Tester class ru.ifmo.ctddev.volhov.implementor.Implementor"
         ;;
+    IterativeParallelism)
+        args=$args"concurrent.Tester list ru.ifmo.ctddev.volhov.iterativeparallelism.IterativeParallelism"
+        ;;
     *) echo "Usage: sh runTest.sh [Walk|ArraySet|Implementor] [salt]"
        exit
        ;;

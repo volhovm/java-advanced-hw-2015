@@ -1,6 +1,7 @@
 package ru.ifmo.ctddev.volhov.iterativeparallelism;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
@@ -11,8 +12,9 @@ import java.util.stream.Collectors;
  *         Created on 3/17/15
  */
 public class ConcUtils {
-    public static <T> T foldl(final Monoid<T> monoid, final List<T> list, int threads) {
+    public static <T> T foldl(final Monoid<T> monoid, final List<T> list, int threads, boolean ) {
         final int n = list.size();
+        if (threads < 1) throw new IllegalArgumentException("Number of threads must be greater than zero");
         if (threads == 1) {
             T accumulator = null;
             if (monoid.isComplete()) {
@@ -30,10 +32,10 @@ public class ConcUtils {
             }
             T[] linearOrder = (T[]) new Object[threads];
             ArrayList<Thread> threadList = new ArrayList<>(threads);
-            for (Integer i = 0; i < threads; i++) {
+            for (int i = 0; i < threads; i++) {
                 final int finalI = i;
-                final int flBound = i * (n / (threads - 1));
-                final int frBound = (i + 1) * (n / (threads - 1)) >= n ? n : (i + 1) * (n / (threads - 1));
+                final int flBound = i * (n / threads);
+                final int frBound = i == threads - 1 ? n : (i + 1) * (n / threads);
                 threadList.add(i, new Thread(new Runnable() {
                     final int index = finalI;
                     final int lBound = flBound;
@@ -41,19 +43,16 @@ public class ConcUtils {
 
                     @Override
                     public void run() {
-                        T current;
-                        current = foldl(monoid, list.subList(lBound, rBound), 1);
+                        T current = foldl(monoid, list.subList(lBound, rBound), 1);
                         linearOrder[index] = current;
                     }
                 }));
             }
             threadList.stream().forEach(Thread::start);
             T accumulator = monoid.zero.orElse(() -> list.get(0)).get();
-            for (int i = monoid.isComplete() ? 0 : 1; i < threads; i++) {
+            for (int i = 0; i < threads; i++) {
                 try {
                     threadList.get(i).join();
-                    System.out.println("Joined thread #" + i);
-                    System.out.println("Applying lambda to (acc/l[i]): " + accumulator + " " + linearOrder[i]);
                     accumulator = monoid.op.apply(accumulator, linearOrder[i]);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -70,12 +69,13 @@ public class ConcUtils {
 
     public static <T, N> List<N> map(Function<? super T, ? extends N> foo, List<? extends T> list, int threads) {
         return foldl(
-                Monoid.listConcat(),
-                list.stream().map(a -> {
-                    ArrayList<N> ret = new ArrayList<>();
+                Monoid.<List<N>>listConcat(),
+                a -> {
+                    LinkedList<N> ret = new LinkedList<>();
                     ret.add(foo.apply(a));
                     return ret;
-                }).collect(Collectors.toList()),
+                },
+                list,
                 threads);
     }
 }

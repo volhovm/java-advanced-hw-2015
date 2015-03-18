@@ -44,7 +44,7 @@ public class IterativeParallelism implements ListIP {
     @Override
     public <T> T maximum(int threads, List<? extends T> values, Comparator<? super T> comparator)
             throws InterruptedException {
-        return ConcUtils.<T>foldl1((a, b) -> comparator.compare(a, b) > 0 ? a : b, (List<T>) values, threads);
+        return ConcUtils.<T>foldl1((a, b) -> comparator.compare(a, b) < 0 ? b : a, (List<T>) values, threads);
     }
 
     @Override
@@ -58,7 +58,7 @@ public class IterativeParallelism implements ListIP {
             throws InterruptedException {
         return ConcUtils.<Boolean>foldl(
                 Monoid.boolAnd(true),
-                ConcUtils.<T, Boolean>map(predicate::test, (List<T>) values, 1),
+                ConcUtils.<T, Boolean>map(predicate::test, (List<T>) values, threads),
                 threads);
     }
 
