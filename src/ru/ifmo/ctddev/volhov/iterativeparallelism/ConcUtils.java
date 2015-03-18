@@ -1,36 +1,32 @@
 package ru.ifmo.ctddev.volhov.iterativeparallelism;
 
+import javafx.util.Pair;
+
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 /**
  * @author volhovm
  *         Created on 3/17/15
  */
 public class ConcUtils {
-    public static <T> T foldl(final Monoid<T> monoid, final List<T> list, int threads, boolean ) {
+    private static <T, N> N foldl(final Monoid<N> joiner, Optional<Pair<BiFunction<N, T, N>, Supplier<N>>> transition,
+                                  final List<T> list, int threads) {
         final int n = list.size();
-        if (threads < 1) throw new IllegalArgumentException("Number of threads must be greater than zero");
-        if (threads == 1) {
-            T accumulator = null;
-            if (monoid.isComplete()) {
-                accumulator = monoid.zero.orElseGet(() -> null).get();
-            } else {
-                accumulator = list.get(0);
-            }
-            for (int i = monoid.isComplete() ? 0 : 1; i < list.size(); i++) {
-                accumulator = monoid.op.apply(accumulator, list.get(i));
-            }
-            return accumulator;
+        final boolean deep = transition.isPresent();
+        if (threads < 1) {
+            throw new IllegalArgumentException("Number of threads must be greater than zero");
         } else {
             if (threads > n) {
                 threads = n;
             }
-            T[] linearOrder = (T[]) new Object[threads];
+            N[] linearOrder = (N[]) new Object[threads];
             ArrayList<Thread> threadList = new ArrayList<>(threads);
             for (int i = 0; i < threads; i++) {
                 final int finalI = i;
@@ -43,17 +39,33 @@ public class ConcUtils {
 
                     @Override
                     public void run() {
-                        T current = foldl(monoid, list.subList(lBound, rBound), 1);
-                        linearOrder[index] = current;
+                        List<T> sublist = list.subList(lBound, rBound);
+                        N accumulator = null;
+                        if (deep) {
+                            accumulator = transition.get().getValue().get();
+                            for (int i = 0; i < sublist.size(); i++) {
+                                accumulator = transition.get().getKey().apply(accumulator, sublist.get(i));
+                            }
+                        } else {
+                            if (joiner.isComplete()) {
+                                accumulator = joiner.zero.get().get();
+                            } else {
+                                accumulator = (N) sublist.get(0);
+                            }
+                            for (int i = joiner.isComplete() ? 0 : 1; i < sublist.size(); i++) {
+                                accumulator = joiner.op.apply(accumulator, (N) sublist.get(i));
+                            }
+                        }
+                        linearOrder[index] = accumulator;
                     }
                 }));
             }
             threadList.stream().forEach(Thread::start);
-            T accumulator = monoid.zero.orElse(() -> list.get(0)).get();
+            N accumulator = joiner.zero.orElse(() -> (N) list.get(0)).get();
             for (int i = 0; i < threads; i++) {
                 try {
                     threadList.get(i).join();
-                    accumulator = monoid.op.apply(accumulator, linearOrder[i]);
+                    accumulator = joiner.op.apply(accumulator, linearOrder[i]);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -62,20 +74,28 @@ public class ConcUtils {
         }
     }
 
+    public static <T> T foldl1(final Monoid<T> monoid, final List<T> list, int threads) {
+        return foldl(monoid, Optional.empty(), list, threads);
+    }
+
     public static <T> T foldl1(BinaryOperator<T> op, List<T> list, int threads) {
-        if (list.isEmpty()) throw new IllegalArgumentException("List must be nonempty"); // It's your fault
-        return foldl(new Monoid<T>(op), list, threads);
+        if (list.isEmpty()) {
+            throw new IllegalArgumentException("List must be nonempty"); // It's your fault
+        }
+        return foldl1(new Monoid<T>(op), list, threads);
     }
 
     public static <T, N> List<N> map(Function<? super T, ? extends N> foo, List<? extends T> list, int threads) {
-        return foldl(
-                Monoid.<List<N>>listConcat(),
-                a -> {
-                    LinkedList<N> ret = new LinkedList<>();
-                    ret.add(foo.apply(a));
-                    return ret;
-                },
-                list,
+        return ConcUtils.<T, List<N>>foldl(
+                Monoid.<N>listConcat(),
+                Optional.of(
+                        new Pair<BiFunction<List<N>, T, List<N>>, Supplier<List<N>>>((xs, t) -> {
+                            LinkedList<N> newList = new LinkedList<N>();
+                            newList.addAll(xs);
+                            newList.add(foo.apply(t));
+                            return newList;
+                        }, LinkedList::new)),
+                (List<T>) list,
                 threads);
     }
 }

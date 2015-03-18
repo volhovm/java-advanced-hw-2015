@@ -2,13 +2,11 @@ package ru.ifmo.ctddev.volhov.iterativeparallelism;
 
 import info.kgeorgiy.java.advanced.concurrent.ListIP;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 /**
  * @author volhovm
@@ -18,7 +16,7 @@ public class IterativeParallelism implements ListIP {
 
     @Override
     public String concat(int threads, List<?> values) throws InterruptedException {
-        return ConcUtils.foldl(
+        return ConcUtils.foldl1(
                 Monoid.stringConcat(),
                 ConcUtils.map(Object::toString, values, threads),
                 threads
@@ -28,11 +26,13 @@ public class IterativeParallelism implements ListIP {
     @Override
     public <T> List<T> filter(int threads, List<? extends T> values, Predicate<? super T> predicate)
             throws InterruptedException {
-        return ConcUtils.<List<T>>foldl(Monoid.<T>listConcatWithPred((a, b) -> !b.isEmpty() && predicate.test(b.get(0))), map(threads, values, a -> {
-            List<T> ret = new LinkedList<T>();
-            ret.add((T) a);
-            return ret;
-        }), threads);
+        return ConcUtils.<List<T>>foldl1(
+                Monoid.<T>listConcatWithPred((a, b) -> !b.isEmpty() && predicate.test(b.get(0))),
+                map(threads, values, a -> {
+                    List<T> ret = new LinkedList<T>();
+                    ret.add((T) a);
+                    return ret;
+                }), threads);
     }
 
     @Override
@@ -56,7 +56,7 @@ public class IterativeParallelism implements ListIP {
     @Override
     public <T> boolean all(int threads, List<? extends T> values, Predicate<? super T> predicate)
             throws InterruptedException {
-        return ConcUtils.<Boolean>foldl(
+        return ConcUtils.<Boolean>foldl1(
                 Monoid.boolAnd(true),
                 ConcUtils.<T, Boolean>map(predicate::test, (List<T>) values, threads),
                 threads);
