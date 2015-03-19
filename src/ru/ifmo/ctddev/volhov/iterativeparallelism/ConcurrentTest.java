@@ -1,9 +1,6 @@
 package ru.ifmo.ctddev.volhov.iterativeparallelism;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Objects;
-import java.util.Random;
+import java.util.*;
 
 /**
  * @author volhovm
@@ -30,12 +27,14 @@ public class ConcurrentTest {
         }
         try {
             IterativeParallelism par = new IterativeParallelism();
-            System.out.println(par.concat(3, strings));
-            System.out.println(par.all(3, strings, s -> s.length() < 13));
-            System.out.println(par.any(3, strings, s -> s.length() > 0));
-            System.out.println(par.concat(3, par.map(3, strings, s -> "("+s+")")));
-            System.out.println(par.map(3, strings, s -> s + "mapped!"));
-            System.out.println(par.filter(3, strings, s -> !s.startsWith("I")));
+            LinkedList<String> linkedList = new LinkedList<>();
+            System.out.println(par.map(3, linkedList, s -> s + " "));
+//            System.out.println(par.concat(3, strings));
+//            System.out.println(par.all(3, strings, s -> s.length() < 13));
+//            System.out.println(par.any(3, strings, s -> s.length() > 0));
+//            System.out.println(par.concat(3, par.map(3, strings, s -> "("+s+")")));
+//            System.out.println(par.map(3, strings, s -> s + "mapped!"));
+//            System.out.println(par.filter(3, strings, s -> !s.startsWith("I")));
 //            System.out.println(par.maximum(5, strings, new Comparator<String>() {
 //                @Override
 //                public int compare(String s, String t1) {
