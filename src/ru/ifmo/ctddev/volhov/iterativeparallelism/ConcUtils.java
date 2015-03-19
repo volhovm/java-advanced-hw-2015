@@ -94,12 +94,10 @@ public class ConcUtils {
      * @return mapped list
      */
     public static <T, N> List<N> map(Function<? super T, ? extends N> foo, List<? extends T> list, int threads) {
-        return ConcUtils.<T, List<N>>foldl(
+        return ConcUtils.foldl(
                 Monoid.<N>listConcat(), //List<N>
                 Optional.of(
-                        (List<T> lst) -> {
-                            return lst.stream().map(foo).collect(Collectors.toList());
-                        }),
+                        (List<T> lst) -> lst.stream().map(foo).collect(Collectors.toList())),
                 (List<T>) list,
                 threads);
     }

@@ -21,4 +21,4 @@ echo "Placing jar to artifacts/MyImplementor.jar"
 mkdir ../artifacts
 jar -cfm ../artifacts/MyImplementor.jar Manifest $targetFiles
 cd ..
-rm -rf $dir
+#rm -rf $dir

@@ -75,7 +75,7 @@ public class Monoid<T> {
      * @return monoid on list
      */
     public static <T> Monoid<List<T>> listConcat() {
-        return new Monoid<List<T>>(LinkedList::new, (a, b) -> {
+        return new Monoid<>(LinkedList::new, (a, b) -> {
             a.addAll(b);
             return a;
         });
@@ -118,7 +118,7 @@ public class Monoid<T> {
      * @return monoid on boolean
      */
     public static Monoid<Boolean> boolOr(boolean init) {
-        return new Monoid<>(() -> init, (a, b) -> a || b);
+        return new Monoid<>(() -> init, Boolean::logicalOr);
     }
 
     /**

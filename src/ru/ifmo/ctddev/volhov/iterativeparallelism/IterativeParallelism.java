@@ -42,7 +42,7 @@ public class IterativeParallelism implements ListIP {
 //                ConcUtils.map(Object::toString, values, threads),
 //                threads
 //        );
-        return ConcUtils.map(Object::toString, values, threads).stream().collect(Collectors.joining());
+        return String.join("", ConcUtils.map(Object::toString, values, threads));
     }
 
     /**
@@ -58,13 +58,11 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public <T> List<T> filter(int threads, List<? extends T> values, Predicate<? super T> predicate) {
-        return ConcUtils.<List<T>>foldl(
+        return ConcUtils.foldl(
                 Monoid.<T>listConcatWithPred((a, b) -> !b.isEmpty() && predicate.test(b.get(0))),
-                map(threads, values, a -> {
-                    List<T> ret = new LinkedList<T>();
-                    ret.add((T) a);
-                    return ret;
-                }), threads);
+                values.stream().map(a -> new ArrayList<T>(Arrays.asList(a))).collect(Collectors.toList()),
+                threads);
+//        )
     }
 
     /**
