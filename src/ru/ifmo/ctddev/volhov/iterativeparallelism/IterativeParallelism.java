@@ -2,11 +2,11 @@ package ru.ifmo.ctddev.volhov.iterativeparallelism;
 
 import info.kgeorgiy.java.advanced.concurrent.ListIP;
 
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This class specifies the functions over list that can be executed simultaneously in the given
@@ -37,11 +37,12 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public String concat(int threads, List<?> values) {
-        return ConcUtils.foldl(
-                Monoid.stringConcat(),
-                ConcUtils.map(Object::toString, values, threads),
-                threads
-        );
+//        return ConcUtils.foldl(
+//                Monoid.stringConcat(),
+//                ConcUtils.map(Object::toString, values, threads),
+//                threads
+//        );
+        return ConcUtils.map(Object::toString, values, threads).stream().collect(Collectors.joining());
     }
 
     /**
@@ -129,9 +130,9 @@ public class IterativeParallelism implements ListIP {
      */
     @Override
     public <T> boolean all(int threads, List<? extends T> values, Predicate<? super T> predicate) {
-        return ConcUtils.<Boolean>foldl(
-                Monoid.boolAnd(true),
-                ConcUtils.<T, Boolean>map(predicate::test, (List<T>) values, threads),
+        return ConcUtils.<T, Boolean>concatmap(Monoid.boolAnd(true),
+                a -> a.stream().<Boolean>map(predicate::test).reduce((x, y) -> x && y).get(),
+                (List<T>) values,
                 threads);
     }
 

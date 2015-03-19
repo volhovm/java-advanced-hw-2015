@@ -10,6 +10,7 @@ import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * This class represents a set of static à la functional methods, that look almost like their analogs
@@ -94,17 +95,33 @@ public class ConcUtils {
      */
     public static <T, N> List<N> map(Function<? super T, ? extends N> foo, List<? extends T> list, int threads) {
         return ConcUtils.<T, List<N>>foldl(
-                Monoid.<N>listConcat(),
+                Monoid.<N>listConcat(), //List<N>
                 Optional.of(
-                        new Pair<BiFunction<List<N>, T, List<N>>, Supplier<List<N>>>((xs, t) -> {
-                            xs.add(foo.apply(t));
-                            return xs;
-                        }, LinkedList::new)),
+                        (List<T> lst) -> {
+                            return lst.stream().map(foo).collect(Collectors.toList());
+                        }),
                 (List<T>) list,
                 threads);
     }
 
-    private static <T, N> N foldl(final Monoid<N> joiner, Optional<Pair<BiFunction<N, T, N>, Supplier<N>>> transition,
+    /**
+     * Folds sublists of given list, got from applying function {@code mapper}, with the monoid function and
+     * identity element (if monoid is complete). It also uses the given number of threads to operate over sublists
+     * simultaneously.
+     *
+     * @param joiner    monoid for joining sublists
+     * @param mapper    function to process sublist
+     * @param list      list to map
+     * @param threads   number of threads
+     * @param <T>       type of elements of given list
+     * @param <N>       type or functions range
+     * @return          folded list
+     */
+    public static <T, N> N concatmap(Monoid<N> joiner, Function<List<T>, N> mapper, List<T> list, int threads) {
+        return foldl(joiner, Optional.of(mapper), list, threads);
+    }
+
+    private static <T, N> N foldl(final Monoid<N> joiner, Optional<Function<List<T>, N>> transition,
                                   final List<T> list, int threads) {
         final int n = list.size();
         final boolean deep = transition.isPresent();
@@ -130,10 +147,11 @@ public class ConcUtils {
                         List<T> sublist = list.subList(lBound, rBound);
                         N accumulator = null;
                         if (deep) {
-                            accumulator = transition.get().getValue().get();
-                            for (int i = 0; i < sublist.size(); i++) {
-                                accumulator = transition.get().getKey().apply(accumulator, sublist.get(i));
-                            }
+                            accumulator = transition.get().apply(sublist);
+//                            accumulator = transition.get().getValue().get();
+//                            for (int i = 0; i < sublist.size(); i++) {
+//                                accumulator = transition.get().getKey().apply(accumulator, sublist.get(i));
+//                            }
                         } else {
                             if (joiner.isComplete()) {
                                 accumulator = joiner.id.get().get();
