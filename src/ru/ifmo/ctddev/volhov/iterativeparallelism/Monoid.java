@@ -76,10 +76,8 @@ public class Monoid<T> {
      */
     public static <T> Monoid<List<T>> listConcat() {
         return new Monoid<List<T>>(LinkedList::new, (a, b) -> {
-            LinkedList<T> ret = new LinkedList<>();
-            ret.addAll(a);
-            ret.addAll(b);
-            return ret;
+            a.addAll(b);
+            return a;
         });
     }
 
@@ -98,10 +96,8 @@ public class Monoid<T> {
             if (!pred.test(a, b)) {
                 return a;
             }
-            LinkedList<T> ret = new LinkedList<>();
-            ret.addAll(a);
-            ret.addAll(b);
-            return ret;
+            a.addAll(b);
+            return a;
         });
     }
 

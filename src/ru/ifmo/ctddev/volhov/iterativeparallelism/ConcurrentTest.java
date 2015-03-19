@@ -25,14 +25,14 @@ public class ConcurrentTest {
         for (int i = 0; i < 150; i++) {
             integers.add(rand.nextInt(10000));
         }
-        try {
+//        try {
             IterativeParallelism par = new IterativeParallelism();
             LinkedList<String> linkedList = new LinkedList<>();
             System.out.println(par.map(3, linkedList, s -> s + " "));
-//            System.out.println(par.concat(3, strings));
-//            System.out.println(par.all(3, strings, s -> s.length() < 13));
-//            System.out.println(par.any(3, strings, s -> s.length() > 0));
-//            System.out.println(par.concat(3, par.map(3, strings, s -> "("+s+")")));
+            System.out.println(par.concat(3, strings));
+            System.out.println(par.all(3, strings, s -> s.length() < 13));
+            System.out.println(par.any(3, strings, s -> s.length() > 0));
+            System.out.println(par.concat(3, par.map(3, strings, s -> "("+s+")")));
 //            System.out.println(par.map(3, strings, s -> s + "mapped!"));
 //            System.out.println(par.filter(3, strings, s -> !s.startsWith("I")));
 //            System.out.println(par.maximum(5, strings, new Comparator<String>() {
@@ -53,8 +53,8 @@ public class ConcurrentTest {
 //                    System.out.println("ERROR_MIN on " + i + ": " + realMin + " != " + parMin);
 //                }
 //            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
     }
 }

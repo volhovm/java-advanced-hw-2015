@@ -97,10 +97,12 @@ public class ConcUtils {
                 Monoid.<N>listConcat(),
                 Optional.of(
                         new Pair<BiFunction<List<N>, T, List<N>>, Supplier<List<N>>>((xs, t) -> {
-                            LinkedList<N> newList = new LinkedList<N>();
-                            newList.addAll(xs);
-                            newList.add(foo.apply(t));
-                            return newList;
+//                            LinkedList<N> newList = new LinkedList<N>();
+//                            newList.addAll(xs);
+//                            newList.add(foo.apply(t));
+//                            return newList;
+                            xs.add(foo.apply(t));
+                            return xs;
                         }, LinkedList::new)),
                 (List<T>) list,
                 threads);
