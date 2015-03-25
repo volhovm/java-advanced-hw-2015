@@ -16,37 +16,40 @@ import java.util.function.Supplier;
  *         Created on 3/25/15
  */
 public class ParallelMapperImpl implements ParallelMapper {
-    private class Pair<K, V> {
-        K _1;
-        V _2;
-        public Pair(K _1, V _2) {
-            this._1 = _1;
-            this._2 = _2;
-        }
-    }
     // (task, isTaken)
+    private volatile boolean isTerminated = false;
     private volatile ArrayDeque<Consumer<Void>> queue;
     private Thread[] threads;
+
     public ParallelMapperImpl(int threads) {
+        queue = new ArrayDeque<>();
         this.threads = new Thread[threads];
         for (int i = 0; i < threads; i++) {
             this.threads[i] = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    while (true) {
-                        if (!queue.isEmpty()) {
-                            Consumer<Void> data = queue.pop();
-                            data.accept(null);
-                        } else {
-                            try {
-                                wait();
-                            } catch (InterruptedException ignored) {}
+                    while (!isTerminated) {
+                        Consumer<Void> data = null;
+                        synchronized (queue) {
+                            if (!queue.isEmpty()) {
+                                data = queue.pop();
+                            }
                         }
+                        if (data != null) {
+                            data.accept(null);
+                        }
+                        try {
+                            synchronized (queue) {
+                                queue.wait();
+                            }
+                        } catch (InterruptedException ignored) {}
                     }
                 }
             });
+            this.threads[i].start();
         }
     }
+
     @Override
     public <T, R> List<R> map(Function<? super T, ? extends R> f, List<? extends T> args) throws InterruptedException {
         final int argsize = args.size();
@@ -62,16 +65,23 @@ public class ParallelMapperImpl implements ParallelMapper {
                     }
                     R res = f.apply(elem);
                     synchronized (retList) {
-                        retList.set(ind, res);
+                        retList.add(res);
                     }
                     counter.incrementAndGet();
+                    synchronized (queue) {
+                        queue.notifyAll();
+                    }
                 });
             }
         }
-        queue.notifyAll();
+        synchronized (queue) {
+            queue.notifyAll();
+        }
         while (true) {
-            synchronized (counter) {
-                if (counter.get() == argsize) break;
+            if (counter.get() == argsize) {
+                break;
+            }
+            synchronized (queue) {
                 queue.wait();
             }
         }
@@ -80,6 +90,9 @@ public class ParallelMapperImpl implements ParallelMapper {
 
     @Override
     public void close() throws InterruptedException {
-
+        isTerminated = true;
+        synchronized (queue) {
+            queue.notifyAll();
+        }
     }
 }
