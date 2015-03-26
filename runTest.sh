@@ -17,6 +17,9 @@ case "$1" in
     IterativeParallelism)
         args=$args"concurrent.Tester list ru.ifmo.ctddev.volhov.iterativeparallelism.IterativeParallelism"
         ;;
+    ParallelMapper)
+        args=$args"mapper.Tester list ru.ifmo.ctddev.volhov.iterativeparallelism.ParallelMapperImpl,ru.ifmo.ctddev.volhov.iterativeparallelism.IterativeParallelism"
+        ;;
     *) echo "Usage: sh runTest.sh [Walk|ArraySet|Implementor] [salt]"
        exit
        ;;

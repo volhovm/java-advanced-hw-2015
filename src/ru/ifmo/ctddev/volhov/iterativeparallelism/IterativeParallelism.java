@@ -2,15 +2,14 @@ package ru.ifmo.ctddev.volhov.iterativeparallelism;
 
 import info.kgeorgiy.java.advanced.concurrent.ListIP;
 import info.kgeorgiy.java.advanced.mapper.ParallelMapper;
-import sun.plugin.navig.motif.Worker;
 
-import java.util.*;
-import java.util.function.BiFunction;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * This class specifies the functions over list that can be executed simultaneously in the given
@@ -21,10 +20,13 @@ import java.util.stream.Stream;
  * that gives an access to parallel functions, similar to {@code foldl} and {@code map}. As many of operations
  * are associative ({@link #minimum}, {@link #all}), it also uses the
  * {@link ru.ifmo.ctddev.volhov.iterativeparallelism.Monoid} class to represent this abstraction.
+ * <p>
+ * It also uses {@link ParallelMapperImpl} to execute tasks on number of threads specified in that object.
  *
  * @author volhovm
  * @see ru.ifmo.ctddev.volhov.iterativeparallelism.ConcUtils
  * @see ru.ifmo.ctddev.volhov.iterativeparallelism.Monoid
+ * @see ru.ifmo.ctddev.volhov.iterativeparallelism.ParallelMapperImpl
  */
 public class IterativeParallelism implements ListIP {
     ParallelMapper parallelMapper;
@@ -60,13 +62,17 @@ public class IterativeParallelism implements ListIP {
      *
      * @return list, filtered with the predicate
      */
-    // FIXME Filter is disgusting
     @Override
     public <T> List<T> filter(int threads, List<? extends T> values, Predicate<? super T> predicate)
             throws InterruptedException {
-        return ConcUtils.foldl(
-                Monoid.<T>listConcatWithPred((a, b) -> !b.isEmpty() && predicate.test(b.get(0))),
-                values.stream().map(a -> new ArrayList<T>(Arrays.asList(a))).collect(Collectors.toList()),
+//        return ConcUtils.foldl(
+//                Monoid.<T>listConcatWithPred((a, b) -> !b.isEmpty() && predicate.test(b.get(0))),
+//                values.stream().map(a -> new ArrayList<T>(Arrays.asList(a))).collect(Collectors.toList()),
+//                threads);
+        return ConcUtils.foldl(Monoid.<T>listConcat(),
+                (List<T> lst) -> lst.stream().filter(predicate).collect(Collectors.toList()),
+                parallelMapper == null ? Optional.empty() : Optional.<ParallelMapper>of(parallelMapper),
+                values,
                 threads);
 //        )
     }
@@ -91,7 +97,7 @@ public class IterativeParallelism implements ListIP {
             return ConcUtils.map(f, values, threads);
         } else {
             return ConcUtils.<T, List<U>>foldl(Monoid.listConcat(),
-                    (List<T> lst) -> lst.stream().map(f).collect(Collectors.toList()),
+                    (List<T> lst) -> lst.stream().sequential().map(f).collect(Collectors.toList()),
                     Optional.of(parallelMapper),
                     values,
                     threads);

@@ -63,10 +63,10 @@ public class ConcUtils {
             if (monoid.isComplete()) {
                 accumulator = monoid.id.get().get();
             } else {
-                accumulator = list.get(0);
+                accumulator = lst.get(0);
             }
-            for (int i = monoid.isComplete() ? 0 : 1; i < list.size(); i++) {
-                accumulator = monoid.op.apply(accumulator, list.get(i));
+            for (int i = monoid.isComplete() ? 0 : 1; i < lst.size(); i++) {
+                accumulator = monoid.op.apply(accumulator, lst.get(i));
             }
             return accumulator;
         }, Optional.empty(), list, threads);
@@ -146,7 +146,10 @@ public class ConcUtils {
                 threads = n;
             }
 
-            final List<N> linearOrder = new ArrayList<N>(threads);    // ochen' jal'
+            final List<N> linearOrder = new ArrayList<N>(threads);
+            for (int i = 0; i < threads; i++) {
+                linearOrder.add(null);
+            }
             class SubWorker {
                 final int i;
                 final List<? extends T> sublist;
@@ -181,13 +184,11 @@ public class ConcUtils {
                         @Override
                         public void run() {
                             N res = workers.get(fi).apply();
-                            synchronized (linearOrder) {
-                                linearOrder.add(fi, res);
-                            }
+                            linearOrder.set(fi, res);
                         }
                     }));
+                    threadList.get(i).start();
                 }
-                threadList.stream().forEach(Thread::start);
                 for (int i = 0; i < threads; i++) {
                     threadList.get(i).join();
                 }
