@@ -1,15 +1,13 @@
 package ru.ifmo.ctddev.volhov.iterativeparallelism;
 
+import info.kgeorgiy.java.advanced.mapper.ParallelMapper;
 import javafx.util.Pair;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -58,8 +56,20 @@ public class ConcUtils {
      * @return folded list
      * @see ru.ifmo.ctddev.volhov.iterativeparallelism.Monoid
      */
-    public static <T> T foldl(final Monoid<T> monoid, final List<T> list, int threads) {
-        return foldl(monoid, Optional.empty(), list, threads);
+    public static <T> T foldl(final Monoid<T> monoid, final List<? extends T> list, int threads)
+            throws InterruptedException {
+        return foldl(monoid, lst -> {
+            T accumulator;
+            if (monoid.isComplete()) {
+                accumulator = monoid.id.get().get();
+            } else {
+                accumulator = list.get(0);
+            }
+            for (int i = monoid.isComplete() ? 0 : 1; i < list.size(); i++) {
+                accumulator = monoid.op.apply(accumulator, list.get(i));
+            }
+            return accumulator;
+        }, Optional.empty(), list, threads);
     }
 
     /**
@@ -73,11 +83,11 @@ public class ConcUtils {
      *
      * @return folded list
      */
-    public static <T> T foldl1(BinaryOperator<T> op, List<T> list, int threads) {
+    public static <T> T foldl1(BinaryOperator<T> op, List<? extends T> list, int threads) throws InterruptedException {
         if (list.isEmpty()) {
             throw new IllegalArgumentException("List must be nonempty"); // It's your fault
         }
-        return foldl(new Monoid<T>(op), list, threads);
+        return foldl(new Monoid<>(op), list, threads);
     }
 
     /**
@@ -93,12 +103,13 @@ public class ConcUtils {
      *
      * @return mapped list
      */
-    public static <T, N> List<N> map(Function<? super T, ? extends N> foo, List<? extends T> list, int threads) {
+    public static <T, N> List<N> map(Function<? super T, ? extends N> foo, List<? extends T> list, int threads)
+            throws InterruptedException {
         return ConcUtils.foldl(
                 Monoid.<N>listConcat(), //List<N>
-                Optional.of(
-                        (List<T> lst) -> lst.stream().map(foo).collect(Collectors.toList())),
-                (List<T>) list,
+                (List<T> lst) -> lst.stream().map(foo).collect(Collectors.toList()),
+                Optional.empty(),
+                list,
                 threads);
     }
 
@@ -107,72 +118,84 @@ public class ConcUtils {
      * identity element (if monoid is complete). It also uses the given number of threads to operate over sublists
      * simultaneously.
      *
-     * @param joiner    monoid for joining sublists
-     * @param mapper    function to process sublist
-     * @param list      list to map
-     * @param threads   number of threads
-     * @param <T>       type of elements of given list
-     * @param <N>       type or functions range
-     * @return          folded list
+     * @param joiner  monoid for joining sublists
+     * @param mapper  function to process sublist
+     * @param list    list to map
+     * @param threads number of threads
+     * @param <T>     type of elements of given list
+     * @param <N>     type or functions range
+     *
+     * @return folded list
      */
-    public static <T, N> N concatmap(Monoid<N> joiner, Function<List<T>, N> mapper, List<T> list, int threads) {
-        return foldl(joiner, Optional.of(mapper), list, threads);
+    public static <T, N> N concatmap(Monoid<N> joiner, Function<List<T>, N> mapper, List<? extends T> list,
+                                     int threads) throws InterruptedException {
+        return foldl(joiner, mapper, Optional.empty(), list, threads);
     }
 
-    private static <T, N> N foldl(final Monoid<N> joiner, Optional<Function<List<T>, N>> transition,
-                                  final List<T> list, int threads) {
+    @SuppressWarnings("unchecked")
+    static <T, N> N foldl(final Monoid<N> joiner,
+                          Function<List<T>, N> transition,
+                          Optional<ParallelMapper> mapper,
+                          final List<? extends T> list,
+                          int threads) throws InterruptedException {
         final int n = list.size();
-        final boolean deep = transition.isPresent();
         if (threads < 1) {
             throw new IllegalArgumentException("Number of threads must be greater than zero");
         } else {
             if (threads > n) {
                 threads = n;
             }
-            N[] linearOrder = (N[]) new Object[threads];
-            ArrayList<Thread> threadList = new ArrayList<>(threads);
-            for (int i = 0; i < threads; i++) {
-                final int finalI = i;
-                final int flBound = i * (n / threads);
-                final int frBound = i == threads - 1 ? n : (i + 1) * (n / threads);
-                threadList.add(i, new Thread(new Runnable() {
-                    final int index = finalI;
-                    final int lBound = flBound;
-                    final int rBound = frBound;
 
-                    @Override
-                    public void run() {
-                        List<T> sublist = list.subList(lBound, rBound);
-                        N accumulator = null;
-                        if (deep) {
-                            accumulator = transition.get().apply(sublist);
-//                            accumulator = transition.get().getValue().get();
-//                            for (int i = 0; i < sublist.size(); i++) {
-//                                accumulator = transition.get().getKey().apply(accumulator, sublist.get(i));
-//                            }
-                        } else {
-                            if (joiner.isComplete()) {
-                                accumulator = joiner.id.get().get();
-                            } else {
-                                accumulator = (N) sublist.get(0);
-                            }
-                            for (int i = joiner.isComplete() ? 0 : 1; i < sublist.size(); i++) {
-                                accumulator = joiner.op.apply(accumulator, (N) sublist.get(i));
+            final List<N> linearOrder = new ArrayList<N>(threads);    // ochen' jal'
+            class SubWorker {
+                final int i;
+                final List<? extends T> sublist;
+
+                SubWorker(int i, List<? extends T> sublist) {
+                    this.i = i;
+                    this.sublist = sublist;
+                }
+
+                public N apply() {
+                    return transition.apply((List<T>) this.sublist);
+                }
+            }
+            ArrayList<SubWorker> workers = new ArrayList<>();
+            for (int i = 0; i < threads; i++) {
+                int flBound = i * (n / threads);
+                int frBound = i == threads - 1 ? n : (i + 1) * (n / threads);
+                workers.add(i, new SubWorker(i, list.subList(flBound, frBound)));
+            }
+            if (mapper.isPresent()) {
+                List<N> temp = mapper.get().<List<T>, N>map(transition,
+                        workers.stream().map(a -> (List<T>) a.sublist).collect(Collectors.toList()));
+                linearOrder.clear();
+                linearOrder.addAll(temp);
+            } else {
+                ArrayList<Thread> threadList = new ArrayList<>(threads);
+                for (int i = 0; i < threads; i++) {
+                    final int finalI = i;
+                    threadList.add(i, new Thread(new Runnable() {
+                        final int fi = finalI;
+
+                        @Override
+                        public void run() {
+                            N res = workers.get(fi).apply();
+                            synchronized (linearOrder) {
+                                linearOrder.add(fi, res);
                             }
                         }
-                        linearOrder[index] = accumulator;
-                    }
-                }));
+                    }));
+                }
+                threadList.stream().forEach(Thread::start);
+                for (int i = 0; i < threads; i++) {
+                    threadList.get(i).join();
+                }
             }
-            threadList.stream().forEach(Thread::start);
+
             N accumulator = joiner.id.orElse(() -> (N) list.get(0)).get();
             for (int i = 0; i < threads; i++) {
-                try {
-                    threadList.get(i).join();
-                    accumulator = joiner.op.apply(accumulator, linearOrder[i]);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                accumulator = joiner.op.apply(accumulator, linearOrder.get(i));
             }
             return accumulator;
         }

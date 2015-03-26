@@ -18,8 +18,8 @@ import java.util.function.Supplier;
 public class ParallelMapperImpl implements ParallelMapper {
     // (task, isTaken)
     private volatile boolean isTerminated = false;
-    private volatile ArrayDeque<Consumer<Void>> queue;
-    private Thread[] threads;
+    private final ArrayDeque<Consumer<Void>> queue;
+    private final Thread[] threads;
 
     public ParallelMapperImpl(int threads) {
         queue = new ArrayDeque<>();
@@ -51,13 +51,13 @@ public class ParallelMapperImpl implements ParallelMapper {
     }
 
     @Override
-    public <T, R> List<R> map(Function<? super T, ? extends R> f, List<? extends T> args) throws InterruptedException {
+    public <T, R> List<R> map(Function<? super T, ? extends R> f, List<? extends T> args) {
         final int argsize = args.size();
         AtomicInteger counter = new AtomicInteger(0);
         ArrayList<R> retList = new ArrayList<>(args.size());
         for (int i = 0; i < argsize; i++) {
             final int ind = i;
-            synchronized (queue) { //sync on volatile, do I neet that?
+            synchronized (queue) { //sync on volatile, do I need that?
                 queue.push((whatever) -> {
                     T elem;
                     synchronized (args) {
@@ -82,7 +82,9 @@ public class ParallelMapperImpl implements ParallelMapper {
                 break;
             }
             synchronized (queue) {
-                queue.wait();
+                try {
+                    queue.wait();
+                } catch (InterruptedException ignored) {}
             }
         }
         return retList;

@@ -1,8 +1,12 @@
 package ru.ifmo.ctddev.volhov.iterativeparallelism;
 
 import info.kgeorgiy.java.advanced.concurrent.ListIP;
+import info.kgeorgiy.java.advanced.mapper.ParallelMapper;
+import sun.plugin.navig.motif.Worker;
 
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -23,6 +27,11 @@ import java.util.stream.Stream;
  * @see ru.ifmo.ctddev.volhov.iterativeparallelism.Monoid
  */
 public class IterativeParallelism implements ListIP {
+    ParallelMapper parallelMapper;
+    public IterativeParallelism(ParallelMapper parallelMapper) {
+        this.parallelMapper = parallelMapper;
+    }
+    public IterativeParallelism() {}
 
     /**
      * Concatenates the string values of elements in the given lists.
@@ -36,12 +45,7 @@ public class IterativeParallelism implements ListIP {
      * @return string, made of concatenation of objects' string representations
      */
     @Override
-    public String concat(int threads, List<?> values) {
-//        return ConcUtils.foldl(
-//                Monoid.stringConcat(),
-//                ConcUtils.map(Object::toString, values, threads),
-//                threads
-//        );
+    public String concat(int threads, List<?> values) throws InterruptedException {
         return String.join("", ConcUtils.map(Object::toString, values, threads));
     }
 
@@ -56,8 +60,10 @@ public class IterativeParallelism implements ListIP {
      *
      * @return list, filtered with the predicate
      */
+    // FIXME Filter is disgusting
     @Override
-    public <T> List<T> filter(int threads, List<? extends T> values, Predicate<? super T> predicate) {
+    public <T> List<T> filter(int threads, List<? extends T> values, Predicate<? super T> predicate)
+            throws InterruptedException {
         return ConcUtils.foldl(
                 Monoid.<T>listConcatWithPred((a, b) -> !b.isEmpty() && predicate.test(b.get(0))),
                 values.stream().map(a -> new ArrayList<T>(Arrays.asList(a))).collect(Collectors.toList()),
@@ -79,12 +85,21 @@ public class IterativeParallelism implements ListIP {
      * @return mapped list
      */
     @Override
-    public <T, U> List<U> map(int threads, List<? extends T> values, Function<? super T, ? extends U> f) {
-        return ConcUtils.map(f, values, threads);
+    public <T, U> List<U> map(int threads, List<? extends T> values, Function<? super T, ? extends U> f)
+            throws InterruptedException {
+        if (parallelMapper == null) {
+            return ConcUtils.map(f, values, threads);
+        } else {
+            return ConcUtils.<T, List<U>>foldl(Monoid.listConcat(),
+                    (List<T> lst) -> lst.stream().map(f).collect(Collectors.toList()),
+                    Optional.of(parallelMapper),
+                    values,
+                    threads);
+        }
     }
 
     /**
-     * Returns the first minimum in the list, specified with given comparator. It does it simultaneosly
+     * Returns the first minimum in the list, specified with given comparator. It does it simultaneously
      * on the number of threads given.
      *
      * @param threads    number of threads
@@ -95,8 +110,18 @@ public class IterativeParallelism implements ListIP {
      * @return first minimum
      */
     @Override
-    public <T> T maximum(int threads, List<? extends T> values, Comparator<? super T> comparator) {
-        return ConcUtils.<T>foldl1((a, b) -> comparator.compare(a, b) < 0 ? b : a, (List<T>) values, threads);
+    public <T> T maximum(int threads, List<? extends T> values, Comparator<? super T> comparator)
+            throws InterruptedException {
+        BinaryOperator<T> max = (a, b) -> comparator.compare(a, b) < 0 ? b : a;
+        if (parallelMapper == null) {
+            return ConcUtils.foldl1(max, values, threads);
+        } else {
+            return ConcUtils.<T, T>foldl(new Monoid<T>(max),
+                    (List<T> lst) -> lst.stream().reduce(max).get(),
+                    Optional.of(parallelMapper),
+                    values,
+                    threads);
+        }
     }
 
     /**
@@ -111,7 +136,8 @@ public class IterativeParallelism implements ListIP {
      * @return first maximum
      */
     @Override
-    public <T> T minimum(int threads, List<? extends T> values, Comparator<? super T> comparator) {
+    public <T> T minimum(int threads, List<? extends T> values, Comparator<? super T> comparator)
+            throws InterruptedException {
         return maximum(threads, values, comparator.reversed());
     }
 
@@ -127,11 +153,20 @@ public class IterativeParallelism implements ListIP {
      * @return true, if all elements of the list satisfy predicate. False otherwise
      */
     @Override
-    public <T> boolean all(int threads, List<? extends T> values, Predicate<? super T> predicate) {
-        return ConcUtils.<T, Boolean>concatmap(Monoid.boolAnd(true),
-                a -> a.stream().<Boolean>map(predicate::test).reduce((x, y) -> x && y).get(),
-                (List<T>) values,
-                threads);
+    public <T> boolean all(int threads, List<? extends T> values, Predicate<? super T> predicate)
+            throws InterruptedException {
+        if (parallelMapper == null) {
+            return ConcUtils.<T, Boolean>concatmap(Monoid.boolAnd(true),
+                    a -> a.stream().<Boolean>map(predicate::test).reduce((x, y) -> x && y).get(),
+                    values,
+                    threads);
+        } else {
+            return ConcUtils.<T, Boolean>foldl(Monoid.boolAnd(true),
+                    (List<T> lst) -> lst.stream().map(predicate::test).reduce(Boolean::logicalAnd).get(),
+                    Optional.of(parallelMapper),
+                    values,
+                    threads);
+        }
     }
 
     /**
@@ -146,7 +181,8 @@ public class IterativeParallelism implements ListIP {
      * @return true, if there is element in the list satisfying predicate. False otherwise
      */
     @Override
-    public <T> boolean any(int threads, List<? extends T> values, Predicate<? super T> predicate) {
+    public <T> boolean any(int threads, List<? extends T> values, Predicate<? super T> predicate)
+            throws InterruptedException {
         return !all(threads, values, predicate.negate());
     }
 }

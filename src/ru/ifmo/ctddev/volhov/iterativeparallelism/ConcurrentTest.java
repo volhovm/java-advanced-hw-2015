@@ -1,5 +1,7 @@
 package ru.ifmo.ctddev.volhov.iterativeparallelism;
 
+import info.kgeorgiy.java.advanced.mapper.ParallelMapper;
+
 import java.util.*;
 
 /**
@@ -8,6 +10,10 @@ import java.util.*;
  */
 public class ConcurrentTest {
     public static void main(String[] args) throws InterruptedException {
+        iterParTest();
+    }
+
+    private static void parTest() throws InterruptedException {
         ParallelMapperImpl impl = new ParallelMapperImpl(5);
         ArrayList<String> strings = new ArrayList<String>();
         strings.add("test");
@@ -16,15 +22,11 @@ public class ConcurrentTest {
         strings.add("memchiki))");
         strings.add("sick");
         strings.add("#");
-        try {
-            System.out.println(impl.map(s -> "@" + s + "@", strings));
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        System.out.println(impl.map(s -> "@" + s + "@", strings));
         impl.close();
     }
 
-    private static void iterParTest() {
+    private static void iterParTest() throws InterruptedException {
         ArrayList<String> strings = new ArrayList<String>();
         strings.add("test");
         strings.add("mamkaIgnata");
@@ -42,6 +44,8 @@ public class ConcurrentTest {
         for (int i = 0; i < 150; i++) {
             integers.add(rand.nextInt(10000));
         }
+//        ParallelMapper mapper = new ParallelMapperImpl(5);
+//        IterativeParallelism par = new IterativeParallelism(mapper);
         IterativeParallelism par = new IterativeParallelism();
         LinkedList<String> linkedList = new LinkedList<>();
         System.out.println(par.map(3, linkedList, s -> s + " "));
@@ -49,5 +53,6 @@ public class ConcurrentTest {
         System.out.println(par.all(3, strings, s -> s.length() < 13));
         System.out.println(par.any(3, strings, s -> s.length() > 0));
         System.out.println(par.concat(3, par.map(3, strings, s -> "(" + s + ")")));
+//        mapper.close();
     }
 }
