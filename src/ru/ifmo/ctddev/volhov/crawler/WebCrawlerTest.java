@@ -13,7 +13,7 @@ import java.nio.file.Paths;
  */
 public class WebCrawlerTest {
     public static void main(String[] args) throws IOException {
-        WebCrawler crawler = new WebCrawler(new CachingDownloader(new File("./downloaded/")), 20, 20, 1);
+        WebCrawler crawler = new WebCrawler(new CachingDownloader(new File("./downloaded/")), 20, 20, 20);
         System.out.println(crawler.download("http://supercreativ.narod.ru/", 3));
         crawler.close();
     }
