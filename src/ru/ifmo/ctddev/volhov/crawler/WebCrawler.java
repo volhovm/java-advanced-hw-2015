@@ -1,16 +1,11 @@
 package ru.ifmo.ctddev.volhov.crawler;
 
-import info.kgeorgiy.java.advanced.crawler.Crawler;
-import info.kgeorgiy.java.advanced.crawler.Document;
-import info.kgeorgiy.java.advanced.crawler.Downloader;
-import info.kgeorgiy.java.advanced.crawler.URLUtils;
+import info.kgeorgiy.java.advanced.crawler.*;
 import javafx.util.Pair;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 
 /**
@@ -29,12 +24,12 @@ import java.util.concurrent.*;
  * It is needed to pass your own {@link info.kgeorgiy.java.advanced.crawler.Downloader} to the {@link #download}
  * method. It also uses {@link info.kgeorgiy.java.advanced.crawler.URLUtils#getHost} for controlling host limit.
  *
+ * @author volhovm
+ *         Created on 4/15/15
  * @see info.kgeorgiy.java.advanced.crawler.URLUtils
  * @see info.kgeorgiy.java.advanced.crawler.Crawler
  * @see java.util.concurrent.ExecutorService
  * @see java.util.concurrent.Semaphore
- * @author volhovm
- *         Created on 4/15/15
  */
 @SuppressWarnings("UnusedDeclaration")
 public class WebCrawler implements Crawler {
@@ -42,13 +37,54 @@ public class WebCrawler implements Crawler {
     private final Downloader downloader;
     private final ExecutorService downloadService, extractService;
     private final int perHost;
+    private final static String USE = "Use: WebCrawler url [downloads [extractors [perHost]]]";
 
     /**
-     * @param downloader    the {@link info.kgeorgiy.java.advanced.crawler.Downloader} class
-     *                      that specifies how downloading should be done
-     * @param downloaders   maximum number of threads that can be used to download the page
-     * @param extractors    maximum number of threads that can be used to extract links from pages
-     * @param perHost       maximum number of threads to download from the same host
+     * This is the main method, that accepts the parameters in form:
+     * {@code url [downloads [extractors [perHost]]]}
+     * and starts new entry of this with {@link info.kgeorgiy.java.advanced.crawler.CachingDownloader}
+     * on specified url with depth = 1.
+     * The files are saved in ./default/ directory.
+     *
+     * @param args          command line arguments
+     * @throws IOException  thrown if directory can't be created
+     */
+    public static void main(String[] args) throws IOException {
+        if (args == null || args.length == 0 || args.length > 4
+                || Arrays.stream(args).filter(a -> a == null).count() > 0) {
+            System.err.println(USE);
+            return;
+        }
+        String url = args[0];
+        int downloaders = 20;
+        int extractors = 20;
+        int perHost = 20;
+        try {
+            if (args.length > 1) {
+                downloaders = Integer.parseInt(args[1]);
+            }
+            if (args.length > 2) {
+                extractors = Integer.parseInt(args[2]);
+            }
+            if (args.length == 4) {
+                perHost = Integer.parseInt(args[3]);
+            }
+        } catch (NumberFormatException ignored) {
+            System.err.println(ignored.getMessage());
+            System.err.println(USE);
+        }
+        WebCrawler crawler = new WebCrawler(new CachingDownloader(new File("./default/")),
+                downloaders, extractors, perHost);
+        crawler.download(url, 1);
+        crawler.close();
+    }
+
+    /**
+     * @param downloader  the {@link info.kgeorgiy.java.advanced.crawler.Downloader} class
+     *                    that specifies how downloading should be done
+     * @param downloaders maximum number of threads that can be used to download the page
+     * @param extractors  maximum number of threads that can be used to extract links from pages
+     * @param perHost     maximum number of threads to download from the same host
      */
     public WebCrawler(Downloader downloader, int downloaders, int extractors, int perHost) {
         this.semaphoreMap = new ConcurrentHashMap<>();
@@ -65,11 +101,12 @@ public class WebCrawler implements Crawler {
      * {@link info.kgeorgiy.java.advanced.crawler.Document} that is returned by
      * {@link info.kgeorgiy.java.advanced.crawler.Downloader} specified in constructor of this.
      *
-     * @param url           the url to be taken as the root of the tree
-     * @param depth         maximum depth of node in the tree -- number of steps <parse, extract links, proceed
-     *                      to page specified by links> performed
-     * @return              list of URLs of sites visited
-     * @throws IOException  when it's impossible to download the page for some reason
+     * @param url   the url to be taken as the root of the tree
+     * @param depth maximum depth of node in the tree -- number of steps <parse, extract links, proceed
+     *              to page specified by links> performed
+     *
+     * @return list of URLs of sites visited
+     * @throws IOException when it's impossible to download the page for some reason
      */
     @Override
     public List<String> download(String url, int depth) throws IOException {
