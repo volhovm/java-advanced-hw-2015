@@ -49,7 +49,7 @@ public class WebCrawler implements Crawler {
      * @param args          command line arguments
      * @throws IOException  thrown if directory can't be created
      */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         if (args == null || args.length == 0 || args.length > 4
                 || Arrays.stream(args).filter(a -> a == null).count() > 0) {
             System.err.println(USE);
@@ -73,10 +73,12 @@ public class WebCrawler implements Crawler {
             System.err.println(ignored.getMessage());
             System.err.println(USE);
         }
-        WebCrawler crawler = new WebCrawler(new CachingDownloader(new File("./default/")),
-                downloaders, extractors, perHost);
-        crawler.download(url, 1);
-        crawler.close();
+        try (WebCrawler crawler = new WebCrawler(new CachingDownloader(new File("./default/")),
+                    downloaders, extractors, perHost)) {
+            crawler.download(url, 1);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
