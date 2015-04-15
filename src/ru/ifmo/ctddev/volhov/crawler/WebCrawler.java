@@ -79,43 +79,57 @@ public class WebCrawler implements Crawler {
         HashSet<String> visited = new HashSet<>();
         ArrayDeque<String> links = new ArrayDeque<>();
         links.push(url);
-        for (int i = depth; i > 0; i--) {
+        for (int i = 0; i < depth; i++) {
+            System.out.println("--- depth " + (i + 1) + " ---");
             // add tasks for downloading of this level
             while (!links.isEmpty()) {
                 String link = links.removeFirst();
                 String host = URLUtils.getHost(link);
                 System.out.println("Link: " + link + ", host: " + host);
                 if (!visited.contains(link)) {
+                    visited.add(link);
                     downloadFutures.addLast(downloadService.submit(() -> {
-//                    System.out.println("In downloadService child");
                         if (!semaphoreMap.containsKey(host)) {
                             semaphoreMap.put(host, new Semaphore(perHost));
                         }
-                        System.out.println("Before: " + semaphoreMap.get(host).availablePermits());
+//                        System.out.println("Before: " + semaphoreMap.get(host).availablePermits());
                         semaphoreMap.get(host).acquire();
-                        System.out.println("Between: " + semaphoreMap.get(host).availablePermits());
-                        Document doc = downloader.download(link);
-                        System.out.println("After: " + semaphoreMap.get(host).availablePermits());
-                        semaphoreMap.get(host).release();
+//                        System.out.println("Between: " + semaphoreMap.get(host).availablePermits());
+                        Document doc;
+                        try {
+                            doc = downloader.download(link);
+                        } finally {
+                            semaphoreMap.get(host).release();
+//                            System.out.println("After: " + semaphoreMap.get(host).availablePermits());
+                        }
                         return new Pair<>(link, extractService.<List<String>>submit(doc::extractLinks));
                     }));
                 }
             }
             // process download tasks
             while (!downloadFutures.isEmpty()) {
+                Future<Pair<String, Future<List<String>>>> future = downloadFutures.removeFirst();
                 try {
-                    Pair<String, Future<List<String>>> pair = downloadFutures.removeFirst().get();
-                    visited.add(pair.getKey());
+                    Pair<String, Future<List<String>>> pair = future.get(5, TimeUnit.SECONDS);
                     ret.add(pair.getKey());
                     extractFutures.add(pair.getValue());
                 } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
+                } catch (TimeoutException ignored) {
+                    downloadFutures.addLast(future);
+                    int counter = 0;
+                    for (Future f : downloadFutures) {
+                        if (!f.isDone()) {
+                            counter++;
+                        }
+                    }
+                    System.out.println("--- Timed out: waiting for " + counter + " downloads to end ---");
                 }
             }
             // process extracting links
             while (!extractFutures.isEmpty()) {
                 try {
-                    extractFutures.removeFirst().get().stream().forEach(links::addLast);
+                    extractFutures.removeFirst().get().stream().distinct().forEach(links::addLast);
                 } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
                 }
