@@ -128,18 +128,13 @@ public class WebCrawler implements Crawler {
                 if (!visited.contains(link)) {
                     visited.add(link);
                     downloadFutures.addLast(downloadService.submit(() -> {
-                        if (!semaphoreMap.containsKey(host)) {
-                            semaphoreMap.put(host, new Semaphore(perHost));
-                        }
-//                        System.out.println("Before: " + semaphoreMap.get(host).availablePermits());
+                        semaphoreMap.putIfAbsent(host, new Semaphore(perHost));
                         semaphoreMap.get(host).acquire();
-//                        System.out.println("Between: " + semaphoreMap.get(host).availablePermits());
                         Document doc;
                         try {
                             doc = downloader.download(link);
                         } finally {
                             semaphoreMap.get(host).release();
-//                            System.out.println("After: " + semaphoreMap.get(host).availablePermits());
                         }
                         return new Pair<>(link, extractService.<List<String>>submit(doc::extractLinks));
                     }));
@@ -180,12 +175,31 @@ public class WebCrawler implements Crawler {
     /**
      * This method closes this entry of {@link ru.ifmo.ctddev.volhov.crawler.WebCrawler}.
      * Everything that {@link #download} method does doesn't use any cache, so it basically doesn't
-     * need {@link #close} to be invoked. On the other hand, this needs to be performed in the end
+     * need this method to be invoked. On the other hand, this needs to be performed in the end
      * because this is the only way to stop threads used inside of this.
      */
     @Override
     public void close() {
         downloadService.shutdown();
         extractService.shutdown();
+        if (!downloadService.isShutdown()) {
+            try {
+                downloadService.awaitTermination(1, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                downloadService.shutdownNow();
+            }
+
+        }
+        if (!extractService.isShutdown()) {
+            try {
+                extractService.awaitTermination(1, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                extractService.shutdownNow();
+            }
+        }
     }
 }
