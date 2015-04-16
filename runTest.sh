@@ -20,6 +20,9 @@ case "$1" in
     ParallelMapper)
         args=$args"mapper.Tester list ru.ifmo.ctddev.volhov.iterativeparallelism.ParallelMapperImpl,ru.ifmo.ctddev.volhov.iterativeparallelism.IterativeParallelism"
         ;;
+    WebCrawler)
+        args=$args"crawler.Tester hard ru.ifmo.ctddev.volhov.crawler.WebCrawler"
+        ;;
     *) echo "Usage: sh runTest.sh [Walk|ArraySet|Implementor] [salt]"
        exit
        ;;
