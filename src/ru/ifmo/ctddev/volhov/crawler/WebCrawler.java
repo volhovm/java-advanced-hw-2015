@@ -93,12 +93,15 @@ public class WebCrawler implements Crawler {
      * @param perHost     maximum number of threads to download from the same host
      */
     public WebCrawler(Downloader downloader, int downloaders, int extractors, int perHost) {
+//        this.downloadLimit = Math.min(downloaders, (Integer.MAX_VALUE / 3));
+//        this.extractLimit = Math.min(extractors, (Integer.MAX_VALUE / 3));
+//        this.perHost = Math.min(perHost, Integer.MAX_VALUE / 2);
         this.downloadLimit = downloaders;
         this.extractLimit = extractors;
-        this.downloader = downloader;
-        this.downloadService = Executors.newFixedThreadPool(downloaders);
-        this.extractService = Executors.newFixedThreadPool(extractors);
         this.perHost = perHost;
+        this.downloader = downloader;
+        this.downloadService = Executors.newFixedThreadPool(this.downloadLimit);
+        this.extractService = Executors.newFixedThreadPool(this.extractLimit);
     }
 
     private void produceExtract(int depth, Document doc,
@@ -110,11 +113,11 @@ public class WebCrawler implements Crawler {
         try {
             if (depth > 1) {
                 List<String> docLinks = doc.extractLinks();
-                docLinks.stream().distinct().filter(x -> !visited.containsKey(x)).forEach(u -> {
+                docLinks.stream().distinct().forEach(url -> {
                     try {
-                        String host = URLUtils.getHost(u);
+                        String host = URLUtils.getHost(url);
                         downloadQueues.putIfAbsent(host, new ConcurrentLinkedDeque<>());
-                        downloadQueues.get(host).addLast(new Pair<>(u, depth - 1));
+                        downloadQueues.get(host).addLast(new Pair<>(url, depth - 1));
                         hostSemaphores.putIfAbsent(host, new Semaphore(perHost));
                         clocker.acquire();
                         downloadService.submit(
@@ -132,45 +135,52 @@ public class WebCrawler implements Crawler {
         }
     }
 
-    // TODO fix synchronisation (this clocker)
-    // TODO fix hosts restriction (1 is the same time as 20)
-
-    private void produceDownload(String host,
-                                 final ConcurrentHashMap<String, Object> ret,
-                                 final ConcurrentHashMap<String, Object> visited,
-                                 final ConcurrentHashMap<String, Semaphore> hostSemaphores,
-                                 final ConcurrentHashMap<String, ConcurrentLinkedDeque<Pair<String, Integer>>> downloadQueues,
-                                 final Semaphore clocker) {
+    private void produceDownload(
+            String host,
+            final ConcurrentHashMap<String, Object> ret,
+            final ConcurrentHashMap<String, Object> visited,
+            final ConcurrentHashMap<String, Semaphore> hostSemaphores,
+            final ConcurrentHashMap<String, ConcurrentLinkedDeque<Pair<String, Integer>>> downloadQueues,
+            final Semaphore clocker
+    ) {
         try {
-            if (hostSemaphores.get(host).tryAcquire()
-                    && !downloadQueues.get(host).isEmpty()) {
-                Pair<String, Integer> pair = downloadQueues.get(host).removeFirst();
-                String url = pair.getKey();
-                int depth = pair.getValue();
-                if (visited.putIfAbsent(url, new Object()) == null) {
-                    try {
-                        Document doc = downloader.download(url);
-                        ret.put(url, new Object());
-                        clocker.acquire();
-                        extractService.submit(
-                                () -> produceExtract(depth, doc, ret, visited, hostSemaphores, downloadQueues,
-                                        clocker));
-                    } catch (IOException | InterruptedException e) {
-                        e.printStackTrace();
-                    } finally {
-                        hostSemaphores.get(host).release();
-                        if (!downloadQueues.get(host).isEmpty()) {
-                            try {
-                                clocker.acquire();
-                                downloadService.submit(
-                                        () -> produceDownload(host, ret, visited, hostSemaphores, downloadQueues,
-                                                clocker));
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
+            if (hostSemaphores.get(host).tryAcquire()) {
+                if (!downloadQueues.get(host).isEmpty()) {
+                    Pair<String, Integer> pair = downloadQueues.get(host).removeFirst();
+                    String url = pair.getKey();
+                    int depth = pair.getValue();
+                    if (visited.putIfAbsent(url, new Object()) == null) {
+                        try {
+                            Document doc = downloader.download(url);
+                            ret.put(url, new Object());
+                            clocker.acquire();
+                            extractService.submit(() -> produceExtract(
+                                    depth,
+                                    doc,
+                                    ret,
+                                    visited,
+                                    hostSemaphores,
+                                    downloadQueues,
+                                    clocker
+                            ));
+                        } catch (IOException | InterruptedException e) {
+                            e.printStackTrace();
+                        } finally {
+                            hostSemaphores.get(host).release();
+                            if (!downloadQueues.get(host).isEmpty()) {
+                                try {
+                                    clocker.acquire();
+                                    downloadService.submit(
+                                            () -> produceDownload(host, ret, visited, hostSemaphores, downloadQueues,
+                                                    clocker));
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
                             }
                         }
                     }
-
+                } else {
+                    hostSemaphores.get(host).release();
                 }
             }
         } finally {
@@ -222,6 +232,7 @@ public class WebCrawler implements Crawler {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        System.out.println("----------------------------------------------OUTOUTOUTOUT");
         return ret.keySet().stream().collect(Collectors.toList());
     }
 
