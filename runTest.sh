@@ -23,7 +23,7 @@ case "$1" in
     WebCrawler)
         args=$args"crawler.Tester hard ru.ifmo.ctddev.volhov.crawler.WebCrawler"
         ;;
-    *) echo "Usage: sh runTest.sh [Walk|ArraySet|Implementor] [salt]"
+    *) echo "Usage: sh runTest.sh [Walk|ArraySet|Implementor|IterativeParallelism|ParallelMapper|WebCrawler] [salt]"
        exit
        ;;
 esac
