@@ -7,13 +7,11 @@ package ru.ifmo.ctddev.volhov.hello;
 public class HeloUDPTesting {
     public static void main(String[] args) throws InterruptedException {
         HelloUDPServer server = new HelloUDPServer();
-        server.start(7777, 2);
+        server.start(7777, 1);
 //        Thread.sleep(3000);
         HelloUDPClient client = new HelloUDPClient();
-        client.start("localhost", 7777, "PREFIX__", 5, 2);
-        Thread.sleep(1000);
+        client.start("localhost", 7777, "My_Prefix_", 1, 1);
         server.close();
         System.out.println("end");
-        server.close();
     }
 }
