@@ -39,15 +39,14 @@ public class HelloUDPServer implements HelloServer {
                                 socket.receive(income);
                                 byte[] data = income.getData();
                                 String result = new String(data, 0, income.getLength());
-//                                System.out.println("SERVER: got income: " + result);
-                                Random rand = new Random();
-                                if (rand.nextFloat() > 0.2) {
-                                    byte[] temp = result.getBytes();
-                                    for (int j = 0; j < rand.nextInt(5); j++) {
-                                        temp[rand.nextInt(temp.length)] = (byte) rand.nextInt(256);
-                                    }
-                                    result = new String(temp, 0, result.length());
-                                }
+//                                Random rand = new Random();
+//                                if (rand.nextFloat() > 0.2) {
+//                                    byte[] temp = result.getBytes();
+//                                    for (int j = 0; j < rand.nextInt(5); j++) {
+//                                        temp[rand.nextInt(temp.length)] = (byte) rand.nextInt(256);
+//                                    }
+//                                    result = new String(temp, 0, result.length());
+//                                }
                                 String replyText = "Hello, " + result;
                                 DatagramPacket reply = new DatagramPacket(replyText.getBytes(),
                                         replyText.getBytes().length,
