@@ -3,7 +3,7 @@
 init="java"
 
 args="info.kgeorgiy.java.advanced."
-
+package_name=$1"Test.jar"
 case "$1" in
     Walk)
         args=$args"walk.Tester RecursiveWalk ru.ifmo.ctddev.volhov.walk.RecursiveWalk"
@@ -23,7 +23,15 @@ case "$1" in
     WebCrawler)
         args=$args"crawler.Tester hard ru.ifmo.ctddev.volhov.crawler.WebCrawler"
         ;;
-    *) echo "Usage: sh runTest.sh [Walk|ArraySet|Implementor|IterativeParallelism|ParallelMapper|WebCrawler] [salt]"
+    HelloUDPClient)
+    	args=$args"hello.Tester client ru.ifmo.ctddev.volhov.hello.HelloUDPClient"
+	package_name="HelloUDPTest.jar"
+	;;
+    HelloUDPServer)
+    	args=$args"hello.Tester server ru.ifmo.ctddev.volhov.hello.HelloUDPServer"
+	package_name="HelloUDPTest.jar"
+	;;
+    *) echo "Usage: sh runTest.sh [Walk|ArraySet|Implementor|IterativeParallelism|ParallelMapper|WebCrawler|HelloUDP[Client|Server]] [salt]"
        exit
        ;;
 esac
@@ -37,7 +45,7 @@ do
     classpath=$classpath$i":"
 done
 
-classpath="-cp ../../../java-advanced-2015/artifacts/"$1"Test.jar:"$classpath":."
+classpath="-cp ../../../java-advanced-2015/artifacts/"$package_name":"$classpath":."
 
 
 init=$init" "$classpath" "$args" "$2" "$3" "$4

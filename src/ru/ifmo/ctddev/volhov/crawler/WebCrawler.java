@@ -36,7 +36,9 @@ import java.util.stream.Collectors;
  * @see java.util.concurrent.Semaphore
  */
 //@SuppressWarnings("UnusedDeclaration")
-public class WebCrawler implements Crawler {
+public class WebCrawler implements AutoCloseable
+//        implements Crawler  // not compatible anymore :(
+{
     private final Downloader downloader;
     private final ExecutorService downloadService, extractService;
     private final int perHost, downloadLimit, extractLimit;
@@ -93,9 +95,7 @@ public class WebCrawler implements Crawler {
      * @param perHost     maximum number of threads to download from the same host
      */
     public WebCrawler(Downloader downloader, int downloaders, int extractors, int perHost) {
-//        this.downloadLimit = Math.min(downloaders, (Integer.MAX_VALUE / 3));
-//        this.extractLimit = Math.min(extractors, (Integer.MAX_VALUE / 3));
-//        this.perHost = Math.min(perHost, Integer.MAX_VALUE / 2);
+
         this.downloadLimit = downloaders;
         this.extractLimit = extractors;
         this.perHost = perHost;
@@ -202,7 +202,7 @@ public class WebCrawler implements Crawler {
      * @return list of URLs of sites visited
      * @throws IOException when it's impossible to download the page for some reason
      */
-    @Override
+//    @Override
     public List<String> download(String url, int depth) throws IOException {
         final int semaphorSize = Integer.MAX_VALUE - 20;
         final Semaphore clocker = new Semaphore(semaphorSize); // we clock in on submitting and clock out when ended
