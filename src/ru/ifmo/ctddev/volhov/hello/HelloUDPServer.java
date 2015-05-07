@@ -4,6 +4,7 @@ import info.kgeorgiy.java.advanced.hello.HelloServer;
 
 import java.io.IOException;
 import java.net.*;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -40,6 +41,7 @@ public class HelloUDPServer implements HelloServer {
             throw new IllegalStateException("Can't run server that is already started");
         }
         running[port] = true;
+        if (pools.contains(port)) pools.get(port).shutdownNow();
         pools.put(port, Executors.newFixedThreadPool(threads));
         try {
             sockets.put(port, new DatagramSocket(port, InetAddress.getByName("localhost")));
@@ -49,15 +51,15 @@ public class HelloUDPServer implements HelloServer {
                 final int threadId = i;
                 pools.get(port).submit(() -> {
                     try {
-                        byte[] buf = new byte[socket.getSendBufferSize()];
+                        byte[] buf = new byte[socket.getReceiveBufferSize()];
                         DatagramPacket income = new DatagramPacket(buf, buf.length);
                         while (running[port]) {
                             try {
                                 socket.receive(income);
                                 byte[] data = income.getData();
-                                String result = new String(data, 0, income.getLength());
+                                String result = new String(data, 0, income.getLength(), Charset.forName("UTF-8"));
                                 String replyText = "Hello, " + result;
-                                DatagramPacket reply = new DatagramPacket(replyText.getBytes(),
+                                DatagramPacket reply = new DatagramPacket(replyText.getBytes("UTF-8"),
                                         replyText.getBytes().length,
                                         income.getAddress(), income.getPort());
                                 socket.send(reply);
@@ -65,12 +67,10 @@ public class HelloUDPServer implements HelloServer {
                             } catch (SocketException e) {
                                 System.err.println("Socket on port " + port + " closed.");
                                 break;
-                            } catch (Throwable thr) {
-                                thr.printStackTrace();
                             }
                         }
                     } catch (IOException e) {
-                        System.out.println("SERVER: fatal error thread #" + threadId);
+                        System.out.println("SERVER: fatal error port#" + port + " thread #" + threadId);
                         e.printStackTrace();
                     }
                 });
@@ -86,8 +86,8 @@ public class HelloUDPServer implements HelloServer {
      */
     @Override
     public synchronized void close() {
+        //        System.out.println("-------- SERVER CLOSING ------");
         Arrays.fill(running, false);
-//        System.out.println("-------- SERVER CLOSING ------");
         sockets.values().forEach(DatagramSocket::close);
         sockets.clear();
         pools.values().forEach(ExecutorService::shutdown);
