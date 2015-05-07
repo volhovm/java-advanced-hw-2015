@@ -4,20 +4,34 @@ import info.kgeorgiy.java.advanced.hello.HelloClient;
 
 import java.io.IOException;
 import java.net.*;
-import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
+ * This class implements basic client capable to send UDP-requests in specified number of threads with
+ * desired text, wait for package receiving and output response. It's also manages situations when there's
+ * no possibility to get response at this very moment.
+ *
+ * @see info.kgeorgiy.java.advanced.hello.HelloClient
  * @author volhovm
- *         Created on 4/29/15
  */
 public class HelloUDPClient implements HelloClient {
+    /**
+     * This method starts sending UDP-requests (threads * requests) on specified host/port with text
+     * "Prefix[thread_number]_[request_number]", receiving responses and printing response on
+     * the standard output. If UDP-request had no response after timeout (100ms), UDP-response
+     * is resent. In this way UDP-requests are sent while all of them will not receive layout of
+     * form "Hello, [request]".
+     * Number of threads and requests are specified in method parameters.
+     *
+     * @param host      server host
+     * @param port      server port
+     * @param prefix    prefix of text message sent in pa
+     * @param requests  number of requests to send from every thread
+     * @param threads   number of threads to send requests from
+     */
     @Override
     public void start(String host, int port, String prefix, int requests, int threads) {
         ExecutorService threadPool = Executors.newFixedThreadPool(threads);
