@@ -59,11 +59,6 @@ public class HelloUDPClient implements HelloClient {
                                     if (!response.equals("Hello, " + message)) {
                                         throw new NumberFormatException();
                                     }
-                                    String[] splited = response.split("_");
-                                    int reqId = Integer.parseInt(splited[splited.length - 1]);
-                                    if (reqId >= requests) {
-                                        throw new NumberFormatException();
-                                    }
                                     System.out.println(response);
                                     current++;
                                 } catch (SocketTimeoutException | NumberFormatException ignored) {}
