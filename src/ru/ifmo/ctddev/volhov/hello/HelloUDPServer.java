@@ -86,7 +86,6 @@ public class HelloUDPServer implements HelloServer {
      */
     @Override
     public synchronized void close() {
-        //        System.out.println("-------- SERVER CLOSING ------");
         Arrays.fill(running, false);
         sockets.values().forEach(DatagramSocket::close);
         sockets.clear();
