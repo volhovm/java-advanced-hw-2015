@@ -1,35 +1,20 @@
 package ru.ifmo.ctddev.volhov.rmi.banksystem;
 
-import java.io.Serializable;
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 
 /**
  * @author volhovm
- *         Created on 5/5/15
+ *         Created on 5/15/15
  */
-public class Account implements Serializable {
-    private static final long serialVersionUID = 88888888L;
-    private long amount;
+public interface Account extends Remote {
+    public long getBalance() throws RemoteException;
 
-    public Account(int initAmount) {
-        amount = initAmount;
-    }
+    public void setBalance(long balance) throws RemoteException;
 
-    public long getAmount() {
-        return amount;
-    }
+    public long increaseBalance(long delta) throws RemoteException;
 
-    public void setAmount(long newAmount) {
-        amount = newAmount;
-    }
+    public long decreaseBalance(long delta) throws RemoteException;
 
-    public long increaseAmount(long delta) {
-        amount += delta;
-        return amount;
-    }
-
-    public long decreaseAmount(long delta) {
-        amount -= delta;
-        return amount;
-    }
+    public String getId() throws RemoteException;
 }

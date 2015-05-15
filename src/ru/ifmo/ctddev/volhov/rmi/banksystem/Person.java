@@ -9,7 +9,7 @@ import java.util.ArrayList;
  * @author volhovm
  *         Created on 5/5/15
  */
-public interface Person extends Serializable {
+public interface Person extends Remote {
     String getName() throws RemoteException;
 
     String getSurname() throws RemoteException;

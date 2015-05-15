@@ -9,7 +9,6 @@ import java.rmi.server.UnicastRemoteObject;
  *         Created on 5/14/15
  */
 public class RemotePerson extends UnicastRemoteObject implements Person {
-    private static final long serialVersionUID = 1231231231L;
     private final LocalPerson person;
 
     public RemotePerson(String name, String surname, String id) throws RemoteException {
@@ -42,10 +41,7 @@ public class RemotePerson extends UnicastRemoteObject implements Person {
         if (this == o) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        if (!super.equals(o)) {
+        if (!(o instanceof RemotePerson)) {
             return false;
         }
 
@@ -60,7 +56,7 @@ public class RemotePerson extends UnicastRemoteObject implements Person {
 
     @Override
     public int hashCode() {
-        int result = super.hashCode();
+        int result = 123123123;
         result = 31 * result + (person != null ? person.hashCode() : 0);
         return result;
     }

@@ -48,7 +48,7 @@ public interface Bank extends Remote {
      * @return list of id of accounts that person has or null if person is not registered
      * @throws RemoteException
      */
-    public List<String> getAccounts(Person person) throws RemoteException;
+    public List<Account> getAccounts(Person person) throws RemoteException;
 
     /**
      * This method returns current balance on account if found.
@@ -60,28 +60,4 @@ public interface Bank extends Remote {
      * @throws RemoteException
      */
     public Long getBalance(Person person, String accountId) throws RemoteException;
-
-    /**
-     * This method increases balance on account specified by id.
-     *
-     * @param delta     how much credits should be added
-     * @param accountId account id
-     * @param person    person that owns the account
-     *
-     * @return new balance or null if account/person was not found
-     * @throws RemoteException
-     */
-    public Long increaseBalance(long delta, Person person, String accountId) throws RemoteException;
-
-    /**
-     * This method decreases balance on account specified by id.
-     *
-     * @param delta     how much credits should be subtracted
-     * @param accountId account id
-     * @param person    person that owns the account
-     *
-     * @return new balance or null if account/person was not found
-     * @throws RemoteException
-     */
-    public Long decreaseBalance(long delta, Person person, String accountId) throws RemoteException;
 }

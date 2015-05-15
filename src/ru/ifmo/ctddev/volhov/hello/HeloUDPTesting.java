@@ -11,7 +11,7 @@ public class HeloUDPTesting {
 //        Thread.sleep(3000);
         HelloUDPClient client = new HelloUDPClient();
         client.start("localhost", 7777, "P1__", 4, 2);
-        client.start("localhost", 7777, "P2__", 4, 2);
+        client.start("localhost", 7777, "русский префикс__", 4, 2);
 //        server.start(7778, 1);
 //        client.start("localhost", 7778, "P3__", 4, 2);
         server.close();
