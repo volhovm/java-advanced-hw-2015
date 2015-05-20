@@ -6,14 +6,20 @@ import static ru.ifmo.ctddev.volhov.rmi.Util.*;
 
 import java.net.MalformedURLException;
 import java.rmi.Naming;
+import java.rmi.NoSuchObjectException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
+ * This class represents a client able to connect to the bank server, check user's ID,
+ * retrieve user's balance, change it and more.
+ *
+ * @see ru.ifmo.ctddev.volhov.rmi.banksystem.Bank
  * @author volhovm
  *         Created on 5/13/15
  */
@@ -36,6 +42,15 @@ public class RMIClient {
         System.out.println();
     }
 
+    /**
+     * This method accepts params in the form: name surname id accountId [+|-]num
+     * If user is not registered in bank, he's registered after invoking this method.
+     * If ID doesn't match, the error is shown.
+     * If accountID stands for nonexistent account, new account with 0 balance is created.
+     * If account was present, the balance is changed due to the sum specified in the last argument.
+     *
+     * @param args  arguments that satisfy usage form
+     */
     public static void main(String[] args) {
         if (args == null || args.length != 5
                 || Arrays.stream(args).anyMatch(a -> a == null)
@@ -62,11 +77,10 @@ public class RMIClient {
             return;
         }
         try {
-//            HashSet<Person> persons = new HashSet<>();
-//            persons.add(new RemotePerson("a", "b", "c"));
-//            System.out.println(persons.contains(new RemotePerson("a", "b", "c")));
+            // Change it at your will
+            PersonType currentType = PersonType.Remote;
+
             // Create bank and person
-            PersonType currentType = PersonType.Local;
             Bank bank = (Bank) Naming.lookup("rmi://localhost/bank");
             Person person;
             if (currentType == PersonType.Remote) {
@@ -74,24 +88,31 @@ public class RMIClient {
             } else {
                 person = new LocalPerson(name, surname, id);
             }
+
+            // This function is called to unexport person if remote
+            Consumer<Void> exiter = (a) -> {
+                try {
+                    if (currentType == PersonType.Remote && !UnicastRemoteObject.unexportObject(person, false)) {
+                        System.err.println("Failed to unexport person");
+                    }
+                } catch (NoSuchObjectException e) {
+                    e.printStackTrace();
+                }
+                System.exit(0);
+            };
+
             // Retrieve list of persons having this name, surname, from bank
             List<Person> personList = bank.searchPersonByName(name, surname, currentType);
             // Create new Account with 0 and exit if list is empty
             if (personList.isEmpty()) {
                 bank.addAccount(person, accountId);
                 System.out.println("Created new account with id " + accountId + " with balance 0");
-                if (currentType == PersonType.Remote && !UnicastRemoteObject.unexportObject(person, false)) {
-                    System.err.println("Failed to unexport person");
-                }
-                return;
+
             }
             // Check if there's person with id matching given, else exit
             if (personList.stream().noneMatch(ignored(p -> p.getId().equals(person.getId())))) {
                 System.out.println("Your id doesn't match, sorry");
-                if (currentType == PersonType.Remote && !UnicastRemoteObject.unexportObject(person, false)) {
-                    System.err.println("Failed to unexport person");
-                }
-                return;
+                exiter.accept(null);
             }
             // Update balance
             List<Account> accounts = bank.getAccounts(person);
@@ -99,10 +120,7 @@ public class RMIClient {
             if (!current.isPresent()) {
                 bank.addAccount(person, accountId);
                 System.out.println("Created new account with id " + accountId + " with balance 0");
-                if (currentType == PersonType.Remote && !UnicastRemoteObject.unexportObject(person, false)) {
-                    System.err.println("Failed to unexport person");
-                }
-                return;
+                exiter.accept(null);
             }
             Account account = current.get();
             Long balance = account.getBalance();
@@ -116,12 +134,9 @@ public class RMIClient {
 
             dumpState(bank, person);
 
-            if (currentType == PersonType.Remote && !UnicastRemoteObject.unexportObject(person, false)) {
-                System.err.println("Failed to unexport person");
-            }
+            exiter.accept(null);
         } catch (RemoteException | MalformedURLException | NotBoundException e) {
             e.printStackTrace();
         }
-//        System.out.println("=== Done ===");
     }
 }

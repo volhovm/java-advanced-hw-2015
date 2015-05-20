@@ -4,6 +4,12 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
 /**
+ * Naive implementation of {@link ru.ifmo.ctddev.volhov.rmi.banksystem.Account} interface. Has
+ * long variable inside describing balance and final String that describes account id. Extends
+ * {@link java.rmi.server.UnicastRemoteObject} so exports automatically.
+ *
+ * @see ru.ifmo.ctddev.volhov.rmi.banksystem.Bank
+ * @see ru.ifmo.ctddev.volhov.rmi.banksystem.Account
  * @author volhovm
  *         Created on 5/5/15
  */

@@ -5,6 +5,11 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
 /**
+ * Basic implementation of {@link ru.ifmo.ctddev.volhov.rmi.banksystem.Person} interface,
+ * that represent simple person account that can be passed as argument to rmi method using
+ * serialization api.
+ *
+ * @see ru.ifmo.ctddev.volhov.rmi.banksystem.Person
  * @author volhovm
  *         Created on 5/14/15
  */

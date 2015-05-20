@@ -8,6 +8,9 @@ import java.rmi.Naming;
 import java.rmi.RemoteException;
 
 /**
+ * This class implements bank server that's capable of accepting requests
+ * and changing user data as specified in {@link ru.ifmo.ctddev.volhov.rmi.banksystem.Bank} interface.
+ *
  * @author volhovm
  *         Created on 5/13/15
  */

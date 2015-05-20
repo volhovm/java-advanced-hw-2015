@@ -1,13 +1,12 @@
 package ru.ifmo.ctddev.volhov.rmi;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-
-import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
+ * This class represents utility set for operating with lambdas that
+ * throw {@link java.rmi.RemoteException}.
+ *
  * @author volhovm
  *         Created on 5/15/15
  */

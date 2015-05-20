@@ -1,10 +1,14 @@
 package ru.ifmo.ctddev.volhov.rmi.banksystem;
 
-import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
 /**
+ * Implementation if {@link ru.ifmo.ctddev.volhov.rmi.banksystem.Person} interface that
+ * is operated via rmi as it extends {@link java.rmi.server.UnicastRemoteObject}. Thus it's
+ * imported to rmiregistry as created and no extra effort is needed, except unregistering.
+ *
+ * @see java.rmi.server.UnicastRemoteObject
  * @author volhovm
  *         Created on 5/14/15
  */
