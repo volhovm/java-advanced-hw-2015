@@ -28,6 +28,7 @@ public class RMIClient {
     private static final String usage = "Usage: name surname id accountId [+|-]num\nid and accountId without spaces";
 
     private static void dumpState(Bank bank, Person person) throws RemoteException {
+        System.out.println();
         System.out.println(person.getName() + " " + person.getSurname());
         System.out.println("Your current account list: \nID, Balance");
         bank.getAccounts(person).forEach(p -> {
@@ -107,7 +108,7 @@ public class RMIClient {
             if (personList.isEmpty()) {
                 bank.addAccount(person, accountId);
                 System.out.println("Created new account with id " + accountId + " with balance 0");
-
+                exiter.accept(null);
             }
             // Check if there's person with id matching given, else exit
             if (personList.stream().noneMatch(ignored(p -> p.getId().equals(person.getId())))) {

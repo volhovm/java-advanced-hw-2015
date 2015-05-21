@@ -8,17 +8,18 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * This class is the basic implementation of {@link ru.ifmo.ctddev.volhov.rmi.banksystem.Bank} interface.
+ * This class is the basic threadsafe implementation of {@link ru.ifmo.ctddev.volhov.rmi.banksystem.Bank} interface.
  * It uses hashmaps for adding/retrieving data, so insertions and searches have {@code O(1)} time complexity.
  *
  * @author volhovm
  *         Created on 5/5/15
  */
 public class BankImpl extends UnicastRemoteObject implements Bank {
-    HashMap<Person, HashMap<String, Account>> database = new HashMap<>();
+    ConcurrentHashMap<Person, HashMap<String, Account>> database = new ConcurrentHashMap<>();
 
     public BankImpl() throws RemoteException { super(); }
 
@@ -42,14 +43,12 @@ public class BankImpl extends UnicastRemoteObject implements Bank {
             person1 = new RemotePerson(person.getName(), person.getSurname(), person.getId());
         }
         database.putIfAbsent(person1, new HashMap<>());
-        if (!database.get(person1).containsKey(accountId)) {
-            database.get(person1).put(accountId, new AccountImpl(accountId));
-        }
+        database.get(person1).putIfAbsent(accountId, new AccountImpl(accountId));
     }
 
     @Override
     public List<Person> searchPersonByName(String name, String surname, PersonType type) throws RemoteException {
-        return database.keySet().stream().filter(ignored(p -> p.getName().equals(name) &&
+        return database.keySet().stream().parallel().filter(ignored(p -> p.getName().equals(name) &&
                 p.getSurname().equals(surname) &&
                 p.getType() == type)).collect(Collectors.toList());
     }

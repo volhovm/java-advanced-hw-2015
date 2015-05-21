@@ -14,7 +14,7 @@ import java.rmi.server.UnicastRemoteObject;
  *         Created on 5/14/15
  */
 public class LocalPerson implements Person, Serializable {
-    private static final long serialVersionUID = 123123L;
+    private static final long serialVersionUID = 1231231231L;
     private final String name, surname, id;
 
     public LocalPerson(String name, String surname, String id) throws RemoteException {

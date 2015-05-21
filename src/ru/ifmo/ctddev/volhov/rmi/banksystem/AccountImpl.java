@@ -2,9 +2,11 @@ package ru.ifmo.ctddev.volhov.rmi.banksystem;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongUnaryOperator;
 
 /**
- * Naive implementation of {@link ru.ifmo.ctddev.volhov.rmi.banksystem.Account} interface. Has
+ * Threadsafe implementation of {@link ru.ifmo.ctddev.volhov.rmi.banksystem.Account} interface. Has
  * long variable inside describing balance and final String that describes account id. Extends
  * {@link java.rmi.server.UnicastRemoteObject} so exports automatically.
  *
@@ -14,31 +16,29 @@ import java.rmi.server.UnicastRemoteObject;
  *         Created on 5/5/15
  */
 public class AccountImpl extends UnicastRemoteObject implements Account {
-    private long balance;
+    private AtomicLong balance;
     private final String accountId;
 
     public AccountImpl(String id) throws RemoteException {
         super();
         accountId = id;
-        balance = 0;
+        balance = new AtomicLong(0);
     }
 
     public long getBalance() {
-        return balance;
+        return balance.longValue();
     }
 
     public void setBalance(long newAmount) {
-        balance = newAmount;
+        balance.set(newAmount);
     }
 
     public long increaseBalance(long delta) {
-        balance += delta;
-        return balance;
+        return balance.addAndGet(delta);
     }
 
     public long decreaseBalance(long delta) {
-        balance -= delta;
-        return balance;
+        return balance.updateAndGet(s -> s - delta);
     }
 
     @Override
