@@ -67,6 +67,7 @@ public class UIFileCopy extends JPanel implements ActionListener, PropertyChange
         statPanel.add(progressBar);
         progressBar.setValue(34);
         progressBar.setBorder(new EmptyBorder(5, 5, 5, 5));
+        progressBar.setStringPainted(true);
 
         uptime = new JLabel("Uptime: aoeuaoeu");
         statPanel.add(uptime);
@@ -102,7 +103,7 @@ public class UIFileCopy extends JPanel implements ActionListener, PropertyChange
     }
 
     public static void main(String[] args) {
-        args = new String[]{"A", "B"};
+//        args = new String[]{"A", "B"};
         UIFileCopy copier = new UIFileCopy(args[0], args[1]);
         copier.run();
     }
@@ -124,7 +125,7 @@ public class UIFileCopy extends JPanel implements ActionListener, PropertyChange
         }
     }
 
-    private static class CopyTask extends SwingWorker<Void, Void> {
+    class CopyTask extends SwingWorker<Void, Void> {
         private Path from, to;
 
         public CopyTask(Path from, Path to) {
@@ -134,15 +135,34 @@ public class UIFileCopy extends JPanel implements ActionListener, PropertyChange
 
         @Override
         protected Void doInBackground() throws Exception {
+            System.out.println(new File(".").getAbsolutePath());
             try (BufferedInputStream sin = new BufferedInputStream(new FileInputStream(from.toFile()));
                  BufferedOutputStream sout = new BufferedOutputStream(new FileOutputStream(to.toFile()));
             ) {
-                byte[] buf = new byte[4096];
+                byte[] buf = new byte[50];
                 int got = 0;
+                long started = System.currentTimeMillis();
+                long prev = System.currentTimeMillis();
+                double size = from.toFile().length();
+                double initsize = size;
+                double aver = -1;
                 while (got != -1) {
                     got = sin.read(buf);
+                    size -= got;
+                    sout.write(buf, 0, got);
+                    Thread.sleep(300);
+                    long temp = System.currentTimeMillis();
+                    double speed = got * 1000 / (temp - prev);
+                    int progress  = (int) (Math.floor((initsize - size) / initsize * 100));
+                    setProgress(progress);
+                    aver = aver == -1 ? speed : (aver + speed) / 2;
+                    uptime.setText(   "Uptime:    " + String.valueOf((temp - started) / 1000) + "s.");
+                    current.setText(  "Current:   " + String.valueOf((int) speed) + " b/s");
+                    average.setText(  "Average:   " + String.valueOf((int) aver) + " b/s");
+                    estimated.setText("Estimated: " + String.valueOf((int) (size / aver)) + "s.");
+                    prev = System.currentTimeMillis();
                 }
-            } catch (FileNotFoundException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
                 System.exit(1);
             }
@@ -152,6 +172,13 @@ public class UIFileCopy extends JPanel implements ActionListener, PropertyChange
                 setProgress(Math.min(100, getProgress() + 5));
             }
             return null;
+        }
+
+        @Override
+        protected void done() {
+            super.done();
+            progressBar.setString("Done");
+            cancelButton.setEnabled(false);
         }
 
         private class UIFileVisitor implements FileVisitor {
